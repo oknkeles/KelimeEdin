@@ -226,6 +226,21 @@ input.answer-input:focus {
 .result-box.learned .speak-btn:active { background: rgba(0,0,0,0.25); }
 
 /* --- EXAMPLES --- */
+.alt-meanings {
+  display: block; width: 100%;
+  margin-top: 8px; padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 500;
+  color: var(--text-dim); line-height: 1.5;
+}
+.alt-label {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.8px; text-transform: uppercase;
+  color: var(--accent2); margin-right: 4px;
+}
+.result-box.learned .alt-meanings { border-top-color: rgba(0,0,0,0.15); color: #5a3a00; }
+.result-box.learned .alt-label { color: #8b5e00; }
 .examples-box {
   margin-top: 12px;
   padding: 14px 14px 10px;
@@ -502,6 +517,27 @@ const CAT_LABELS = {
 
 const STORE_KEY = "ke-scores-v3";
 const GLOBAL_KEY = "ke-global-v3";
+
+// Alt meanings: same word can have multiple translations
+const ALT_MEANINGS = {"home":[{"en":"house","tr":"ev"}],"house":[{"en":"home","tr":"ev"}],"stairs":[{"en":"ladder","tr":"merdiven"}],"ladder":[{"en":"stairs","tr":"merdiven"}],"clock":[{"en":"hour","tr":"saat"}],"hour":[{"en":"clock","tr":"saat"}],"snow":[{"en":"profit","tr":"kar"}],"profit":[{"en":"snow","tr":"kar"}],"do":[{"en":"make","tr":"yapmak"}],"make":[{"en":"do","tr":"yapmak"}],"get":[{"en":"take","tr":"almak"}],"take":[{"en":"get","tr":"almak"}],"idea":[{"en":"opinion","tr":"fikir"}],"opinion":[{"en":"idea","tr":"fikir"}],"wrong":[{"en":"false","tr":"yanlış"}],"false":[{"en":"wrong","tr":"yanlış"}],"information":[{"en":"knowledge","tr":"bilgi"}],"knowledge":[{"en":"information","tr":"bilgi"}],"alone":[{"en":"lonely","tr":"yalnız"}],"lonely":[{"en":"alone","tr":"yalnız"}],"bath":[{"en":"bathroom","tr":"banyo"}],"bathroom":[{"en":"bath","tr":"banyo"}],"client":[{"en":"customer","tr":"müşteri"}],"customer":[{"en":"client","tr":"müşteri"}],"brush":[{"tr":"fırçalamak"},{"tr":"fırça"}],"water":[{"tr":"sulamak"},{"tr":"su"}],"garden":[{"tr":"bahçe yapmak"},{"tr":"bahçe"}],"market":[{"tr":"pazar (ekonomi)"},{"tr":"pazar"}],"work":[{"tr":"iş"},{"tr":"çalışmak"}],"clean":[{"tr":"temizlemek"},{"tr":"temiz"}],"dirty":[{"tr":"kirletmek"},{"tr":"kirli"}],"dry":[{"tr":"kurutmak"},{"tr":"çamaşır"},{"tr":"kuru"}],"answer":[{"tr":"cevaplamak"},{"tr":"cevap"}],"trust":[{"tr":"güvenmek"},{"tr":"güven"}],"smile":[{"tr":"gülümsemek"},{"tr":"gülümseme"}],"iron":[{"tr":"ütülemek"},{"tr":"demir"}]};
+
+// Build reverse lookup: TR word → all valid EN answers
+const TR_TO_EN = {};
+WORDS.forEach(w => {
+  const trNorm = w.tr.toLowerCase().trim();
+  if (!TR_TO_EN[trNorm]) TR_TO_EN[trNorm] = [];
+  if (!TR_TO_EN[trNorm].includes(w.en.toLowerCase())) TR_TO_EN[trNorm].push(w.en.toLowerCase());
+});
+// Also add slash-separated entries
+WORDS.forEach(w => {
+  if (w.tr.includes('/')) {
+    w.tr.split('/').forEach(part => {
+      const p = part.toLowerCase().trim();
+      if (!TR_TO_EN[p]) TR_TO_EN[p] = [];
+      if (!TR_TO_EN[p].includes(w.en.toLowerCase())) TR_TO_EN[p].push(w.en.toLowerCase());
+    });
+  }
+});
 let scores = {};
 let global = { correct: 0, wrong: 0, learned: 0 };
 let current = null;
@@ -605,7 +641,42 @@ function checkAnswer() {
   const expected = currentDir === "en2tr" ? current.tr : current.en;
   const expectedNorm = normalize(expected);
   const alternates = expected.split(/[\/,]/).map(s => normalize(s));
-  const isCorrect = alternates.includes(userAnswer) || expectedNorm === userAnswer;
+  
+  // Check direct match first
+  let isCorrect = alternates.includes(userAnswer) || expectedNorm === userAnswer;
+  
+  // Check alt meanings if not directly correct
+  let altMatch = null;
+  if (!isCorrect) {
+    const alts = ALT_MEANINGS[current.en.toLowerCase()] || [];
+    if (currentDir === "en2tr") {
+      // User typed Turkish — check all possible Turkish translations
+      for (const a of alts) {
+        if (a.tr && normalize(a.tr) === userAnswer) {
+          isCorrect = true;
+          altMatch = a;
+          break;
+        }
+        // Also check parts if slash-separated
+        if (a.tr && a.tr.includes('/')) {
+          for (const part of a.tr.split('/')) {
+            if (normalize(part) === userAnswer) { isCorrect = true; altMatch = a; break; }
+          }
+        }
+      }
+    } else {
+      // User typed English — check if their answer is a synonym
+      const trNorm = current.tr.toLowerCase().trim();
+      const validEns = TR_TO_EN[trNorm] || [];
+      if (validEns.includes(userAnswer)) {
+        isCorrect = true;
+        // Find which alt it matched
+        for (const a of alts) {
+          if (a.en && normalize(a.en) === userAnswer) { altMatch = a; break; }
+        }
+      }
+    }
+  }
 
   answered = true;
   input.disabled = true;
@@ -657,14 +728,13 @@ function checkAnswer() {
     document.getElementById('word-card').classList.add('shake');
   }
 
-  // Build the answer area: show the answer + ALWAYS a speak button for the English word
+  // Build the answer area
   const answerText = currentDir === "en2tr" ? current.tr : current.en;
   const englishWord = current.en;
   resultAnswer.innerHTML = '';
   const span = document.createElement('span');
   span.textContent = answerText;
   resultAnswer.appendChild(span);
-  // Always-available English speak button
   const ansSpeakBtn = document.createElement('button');
   ansSpeakBtn.className = 'speak-btn';
   ansSpeakBtn.type = 'button';
@@ -673,7 +743,27 @@ function checkAnswer() {
   ansSpeakBtn.onclick = (e) => { e.stopPropagation(); speak(englishWord, 'en-US'); };
   resultAnswer.appendChild(ansSpeakBtn);
 
-  // Auto-speak the English word when answer is revealed (works in both directions)
+  // Show other meanings if they exist
+  const alts = ALT_MEANINGS[current.en.toLowerCase()] || [];
+  if (alts.length > 0) {
+    const altDiv = document.createElement('div');
+    altDiv.className = 'alt-meanings';
+    const otherMeanings = alts
+      .map(a => {
+        if (a.en && a.en.toLowerCase() !== current.en.toLowerCase()) {
+          return a.en + ' = ' + a.tr;
+        } else if (a.tr && a.tr !== current.tr) {
+          return current.en + ' = ' + a.tr;
+        }
+        return null;
+      })
+      .filter(Boolean);
+    if (otherMeanings.length > 0) {
+      altDiv.innerHTML = '<span class="alt-label">Diğer anlamları:</span> ' + otherMeanings.join(' • ');
+      resultAnswer.appendChild(altDiv);
+    }
+  }
+
   setTimeout(() => speak(englishWord, 'en-US'), 250);
 
   showExamples(current);
