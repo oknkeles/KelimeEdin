@@ -127,6 +127,12 @@ main { max-width: 720px; margin: 0 auto; padding: 0 14px calc(80px + var(--safe-
 }
 @keyframes slideInRight { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes slideInLeft  { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes achFlash { 0%{opacity:1} 100%{opacity:0} }
+@keyframes achBanner {
+  0%   { opacity:0; transform:translate(-50%,-50%) scale(0.6); }
+  70%  { transform:translate(-50%,-50%) scale(1.05); }
+  100% { opacity:1; transform:translate(-50%,-50%) scale(1); }
+}
 
 /* --- SESSION BAR --- */
 .session-bar {
@@ -1346,6 +1352,12 @@ function confetti() {
 // GAMEPLAY
 // =====================================================================
 function showWord() {
+  // If session is complete, show summary instead of next word
+  if (session.idx >= settings.sessionLen) {
+    showSessionSummary();
+    return;
+  }
+
   // Hide summary if visible
   document.getElementById('session-summary').classList.remove('show');
   document.getElementById('word-card').style.display = '';
@@ -1536,7 +1548,20 @@ function finalizeAnswer(isCorrect, isSkip) {
   // Build the answer area
   const answerText = currentDir === "en2tr" ? current.tr : current.en;
   const englishWord = current.en;
+  const userTyped = document.getElementById('answer-input').value;
   resultAnswer.innerHTML = '';
+
+  // If wrong: show what the user typed
+  if (!isCorrect && !isSkip && userTyped.trim()) {
+    const userDiv = document.createElement('div');
+    userDiv.style.cssText = 'font-size:13px;color:rgba(245,87,108,0.9);margin-bottom:6px;' +
+      'padding:5px 10px;background:rgba(245,87,108,0.08);border-radius:8px;' +
+      'display:inline-block;text-decoration:line-through;';
+    userDiv.textContent = '✗ ' + userTyped.trim();
+    resultAnswer.appendChild(userDiv);
+    resultAnswer.appendChild(document.createElement('br'));
+  }
+
   const span = document.createElement('span');
   span.textContent = answerText;
   resultAnswer.appendChild(span);
@@ -1571,18 +1596,24 @@ function finalizeAnswer(isCorrect, isSkip) {
   }
 
   showExamples(current);
-  document.getElementById('next-btn').classList.add('show');
+
+  // Session check — must do BEFORE showing next button so label is right
+  session.idx++;
+  updateSessionBar();
+  const sessionDone = session.idx >= settings.sessionLen;
+  const nextBtn = document.getElementById('next-btn');
+  nextBtn.textContent = sessionDone ? '🎉 Seans Özeti →' : 'Sonraki Kelime →';
+  nextBtn.classList.add('show');
 
   save();
   updateMiniStats();
   checkAchievements();
 
-  // Session check
-  session.idx++;
-  updateSessionBar();
-  if (session.idx >= settings.sessionLen) {
-    setTimeout(showSessionSummary, 2200);
-  }
+  // Scroll result box into view (fixes mobile keyboard-hiding-content issue)
+  setTimeout(() => {
+    const rb = document.getElementById('result-box');
+    if (rb) rb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 120);
 }
 
 function useHint() {
@@ -1945,18 +1976,38 @@ function checkAchievements() {
   }
 }
 function showAchievementToast(a) {
+  // Full-screen flash
+  const flash = document.createElement('div');
+  flash.style.cssText = 'position:fixed;inset:0;z-index:299;background:rgba(255,215,0,0.08);pointer-events:none;animation:achFlash 0.6s ease-out forwards;';
+  document.body.appendChild(flash);
+  setTimeout(() => flash.remove(), 700);
+
+  // Trigger confetti burst
+  confetti();
+
+  // Big central banner
   const toast = document.createElement('div');
   toast.style.cssText = [
-    'position:fixed', 'top:calc(var(--safe-top) + 72px)', 'left:50%', 'transform:translateX(-50%)',
-    'z-index:300', 'background:var(--gradient-gold)', 'color:#1a0e2a',
-    'padding:10px 20px', 'border-radius:14px', 'font-size:13px', 'font-weight:700',
-    'white-space:nowrap', 'box-shadow:0 8px 24px rgba(255,140,0,0.4)',
-    'animation:fadePop 0.4s ease-out', 'pointer-events:none'
+    'position:fixed', 'top:50%', 'left:50%',
+    'transform:translate(-50%,-50%) scale(0.8)',
+    'z-index:400', 'background:var(--gradient-gold)', 'color:#1a0e2a',
+    'padding:22px 30px', 'border-radius:20px',
+    'text-align:center', 'pointer-events:none',
+    'box-shadow:0 16px 48px rgba(255,140,0,0.6)',
+    'animation:achBanner 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards'
   ].join(';');
   toast.setAttribute('role', 'alert');
-  toast.textContent = a.icon + ' ' + a.title + ' kazanıldı!';
+  toast.innerHTML =
+    '<div style="font-size:40px;margin-bottom:8px">' + a.icon + '</div>' +
+    '<div style="font-size:18px;font-weight:900;font-family:Fraunces,serif">Başarı Kazanıldı!</div>' +
+    '<div style="font-size:22px;font-weight:900;margin:4px 0">' + a.title + '</div>' +
+    '<div style="font-size:12px;opacity:0.75;margin-top:4px">' + a.desc + '</div>';
   document.body.appendChild(toast);
-  setTimeout(() => { toast.style.transition = 'opacity 0.4s'; toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 2800);
+  setTimeout(() => {
+    toast.style.transition = 'opacity 0.4s, transform 0.4s';
+    toast.style.opacity = '0'; toast.style.transform = 'translate(-50%,-50%) scale(0.9)';
+    setTimeout(() => toast.remove(), 450);
+  }, 2500);
 }
 function renderAchievements() {
   const wrap = document.getElementById('achievements-wrap');
