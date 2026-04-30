@@ -1549,6 +1549,7 @@ function finalizeAnswer(isCorrect, isSkip) {
   answered = true;
   const input = document.getElementById('answer-input');
   input.disabled = true;
+  input.blur(); // klavyeyi kapat, viewport stabilize olsun
   document.getElementById('check-btn').style.display = 'none';
   document.getElementById('hint-btn').style.display = 'none';
   document.getElementById('skip-btn').style.display = 'none';
@@ -1683,11 +1684,11 @@ function finalizeAnswer(isCorrect, isSkip) {
   updateMiniStats();
   checkAchievements();
 
-  // Scroll result into view — show result + examples together
+  // Scroll result into view after keyboard fully closes (~300ms on iOS)
   setTimeout(() => {
     const rb = document.getElementById('result-box');
     if (rb) rb.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, 150);
+  }, 400);
 }
 
 function useHint() {
