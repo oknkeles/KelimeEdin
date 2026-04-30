@@ -9,6 +9,15 @@
 <meta name="apple-mobile-web-app-title" content="KelimeEdin">
 <meta name="theme-color" content="#0a0818">
 <meta name="format-detection" content="telephone=no">
+<meta name="description" content="Spaced repetition ile İngilizce kelime öğren. Ücretsiz, offline çalışan PWA uygulaması.">
+<meta property="og:title" content="KelimeEdin – İngilizce Kelime Öğren">
+<meta property="og:description" content="Spaced repetition ile İngilizce kelime öğren. Ücretsiz, offline çalışan PWA.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://oknkeles.github.io/KelimeEdin/">
+<meta property="og:image" content="https://oknkeles.github.io/KelimeEdin/icon-512.png">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="KelimeEdin – İngilizce Kelime Öğren">
+<meta name="twitter:description" content="Spaced repetition ile İngilizce kelime öğren. Ücretsiz, offline PWA.">
 <title>KelimeEdin - İngilizce Kelime Öğren</title>
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgMTgwIj48cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgcng9IjQwIiBmaWxsPSIjMGEwODE4Ii8+PHRleHQgeD0iOTAiIHk9IjEyMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSI5MCIgZmlsbD0iI2Y1NTc2YyI+SzwvdGV4dD48L3N2Zz4=">
 <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiS2VsaW1lRWRpbiIsInNob3J0X25hbWUiOiJLZWxpbWVFZGluIiwic3RhcnRfdXJsIjoiLiIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMwYTA4MTgiLCJ0aGVtZV9jb2xvciI6IiMwYTA4MTgifQ==">
@@ -116,6 +125,8 @@ main { max-width: 720px; margin: 0 auto; padding: 0 14px calc(80px + var(--safe-
   0% { transform: translate(0,0) rotate(0deg); opacity: 1; }
   100% { transform: translate(var(--cx), var(--cy)) rotate(720deg); opacity: 0; }
 }
+@keyframes slideInRight { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes slideInLeft  { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: translateX(0); } }
 
 /* --- SESSION BAR --- */
 .session-bar {
@@ -563,14 +574,187 @@ input.answer-input:focus { border-color: var(--accent2); background: rgba(255,25
   .result-answer { font-size: 19px; }
   .cat-emoji { font-size: 38px; }
 }
+
+/* --- CEFR BADGE --- */
+.cefr-badge {
+  display: inline-block; font-size: 10px; font-weight: 800;
+  letter-spacing: 1px; padding: 3px 9px; border-radius: 100px;
+  text-transform: uppercase; margin-bottom: 8px; border: 1px solid transparent;
+}
+.cefr-a1 { background: rgba(67,233,123,0.14); color: #43e97b; border-color: rgba(67,233,123,0.3); }
+.cefr-a2 { background: rgba(56,239,215,0.12); color: #38f9d7; border-color: rgba(56,239,215,0.28); }
+.cefr-b1 { background: rgba(79,172,254,0.14); color: #4facfe; border-color: rgba(79,172,254,0.3); }
+.cefr-b2 { background: rgba(176,130,255,0.14); color: #b78ffc; border-color: rgba(176,130,255,0.3); }
+
+/* --- OFFLINE CHIP --- */
+.offline-chip {
+  display: none; padding: 3px 10px; border-radius: 100px;
+  background: rgba(245,87,108,0.14); border: 1px solid rgba(245,87,108,0.3);
+  font-size: 11px; font-weight: 700; color: #f5576c; align-items: center; gap: 4px;
+}
+.offline-chip.show { display: inline-flex; }
+
+/* --- SW UPDATE BANNER --- */
+.update-banner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  background: linear-gradient(135deg, #667eea, #764ba2); color: white;
+  padding: 10px 16px; display: none; align-items: center; gap: 10px;
+  font-size: 13px; font-weight: 600;
+}
+.update-banner.show { display: flex; }
+.update-banner button { margin-left: auto; padding: 5px 14px; background: white; color: #764ba2; border: none; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
+
+/* --- PWA INSTALL BANNER --- */
+.install-banner {
+  position: fixed; bottom: calc(68px + var(--safe-bottom)); left: 14px; right: 14px; z-index: 55;
+  background: linear-gradient(135deg, rgba(102,126,234,0.96), rgba(118,75,162,0.96));
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-radius: 16px; padding: 14px 16px; display: none; align-items: center; gap: 12px;
+  border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 8px 32px rgba(118,75,162,0.4);
+}
+.install-banner.show { display: flex; animation: fadeUp 0.4s; }
+.install-banner-icon { font-size: 26px; flex-shrink: 0; }
+.install-banner-text { flex: 1; }
+.install-banner-text strong { display: block; font-size: 13px; font-weight: 700; color: white; }
+.install-banner-text span { font-size: 11px; color: rgba(255,255,255,0.75); }
+.install-banner-btn { padding: 8px 16px; background: white; color: #764ba2; border: none; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
+.install-banner-close { background: transparent; border: none; color: rgba(255,255,255,0.6); font-size: 20px; cursor: pointer; padding: 4px; flex-shrink: 0; line-height: 1; }
+
+/* --- DIFFICULTY BUTTONS --- */
+.diff-row { display: none; gap: 6px; margin-top: 10px; }
+.diff-row.show { display: flex; animation: fadeUp 0.3s; }
+.diff-btn {
+  flex: 1; padding: 9px 4px; border: 1px solid var(--card-border); border-radius: 10px;
+  font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.2s;
+  background: rgba(255,255,255,0.04);
+}
+.diff-btn.easy { color: #43e97b; border-color: rgba(67,233,123,0.3); }
+.diff-btn.easy:active { background: rgba(67,233,123,0.12); }
+.diff-btn.normal { color: #4facfe; border-color: rgba(79,172,254,0.3); }
+.diff-btn.normal:active { background: rgba(79,172,254,0.12); }
+.diff-btn.hard { color: #f5576c; border-color: rgba(245,87,108,0.3); }
+.diff-btn.hard:active { background: rgba(245,87,108,0.12); }
+
+/* --- LEECH BADGE --- */
+.leech-badge {
+  display: inline-block; font-size: 10px; padding: 2px 7px;
+  background: rgba(245,87,108,0.12); border: 1px solid rgba(245,87,108,0.25);
+  border-radius: 100px; color: #f5576c; font-weight: 700;
+  margin-left: 6px; vertical-align: middle;
+}
+
+/* --- SEARCH BAR --- */
+.search-bar {
+  width: 100%; background: rgba(255,255,255,0.04);
+  border: 1.5px solid var(--card-border); border-radius: 12px;
+  padding: 11px 14px 11px 38px; font-size: 14px; color: var(--text);
+  font-family: inherit; outline: none;
+  -webkit-user-select: text; user-select: text;
+  transition: border 0.2s; margin-bottom: 12px; display: block;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%235a5468'%3E%3Cpath d='M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: 12px center; background-size: 16px;
+}
+.search-bar:focus { border-color: var(--accent2); }
+
+/* --- DAILY GOAL RING --- */
+.goal-ring-wrap {
+  background: var(--card); border: 1px solid var(--card-border);
+  border-radius: 14px; padding: 16px; margin-bottom: 18px;
+  display: flex; align-items: center; gap: 16px;
+}
+.goal-ring-svg-wrap { position: relative; flex-shrink: 0; }
+.goal-ring-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.goal-ring-num { font-family: 'Fraunces', serif; font-weight: 900; font-size: 18px; line-height: 1; }
+.goal-ring-sub { font-size: 9px; color: var(--text-dim); text-transform: uppercase; font-weight: 600; }
+.goal-ring-info { flex: 1; }
+.goal-ring-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+.goal-ring-desc { font-size: 12px; color: var(--text-dim); line-height: 1.4; }
+
+/* --- ACHIEVEMENTS --- */
+.achievements-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px; }
+.ach-card {
+  background: var(--card); border: 1px solid var(--card-border);
+  border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 10px;
+}
+.ach-card.unlocked { border-color: rgba(255,215,0,0.3); background: linear-gradient(135deg, rgba(255,215,0,0.07), rgba(255,140,0,0.03)); }
+.ach-icon { font-size: 22px; flex-shrink: 0; }
+.ach-card.locked .ach-icon { filter: grayscale(1); opacity: 0.35; }
+.ach-title { font-size: 12px; font-weight: 700; line-height: 1.2; }
+.ach-desc { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.ach-card.locked .ach-title { color: var(--text-muted); }
+
+/* --- WORD DETAIL MODAL EXTRAS --- */
+.wd-score-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.wd-score-item { flex: 1; text-align: center; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 10px 4px; }
+.wd-score-num { font-family: 'Fraunces', serif; font-weight: 900; font-size: 22px; line-height: 1; margin-bottom: 2px; }
+.wd-score-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+.wd-note {
+  width: 100%; background: rgba(255,255,255,0.04); border: 1.5px solid var(--card-border);
+  border-radius: 10px; padding: 10px 12px; font-size: 13px; color: var(--text);
+  font-family: inherit; resize: vertical; min-height: 64px;
+  -webkit-user-select: text; user-select: text;
+}
+.wd-note:focus { outline: none; border-color: var(--accent2); }
+
+/* --- RECAP MODAL --- */
+.recap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 16px; }
+.recap-stat { background: rgba(255,255,255,0.04); border-radius: 10px; padding: 12px 8px; text-align: center; }
+.recap-num { font-family: 'Fraunces', serif; font-weight: 900; font-size: 24px; line-height: 1; margin-bottom: 4px; }
+.recap-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* --- SHARE BUTTON --- */
+.share-btn {
+  width: 100%; padding: 12px; background: rgba(255,255,255,0.05);
+  border: 1px solid var(--card-border); color: var(--text);
+  border-radius: 12px; font-size: 14px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: all 0.2s;
+  margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.share-btn:active { background: rgba(255,255,255,0.1); transform: scale(0.98); }
+
+/* --- BETTER EMPTY STATES --- */
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text-dim); }
+.empty-state .emoji { font-size: 52px; margin-bottom: 12px; display: block; }
+.empty-state h3 { font-family: 'Fraunces', serif; font-weight: 700; font-size: 20px; color: var(--text); margin-bottom: 8px; }
+.empty-state p { font-size: 13px; line-height: 1.7; }
+.empty-state .cta-btn {
+  margin-top: 16px; display: inline-block; padding: 11px 22px;
+  background: var(--gradient1); color: white; border: none;
+  border-radius: 12px; font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit; box-shadow: 0 4px 16px rgba(245,87,108,0.3);
+}
+
+/* --- PREFERS-REDUCED-MOTION --- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --- FOCUS VISIBLE (ACCESSIBILITY) --- */
+:focus-visible {
+  outline: 2px solid var(--accent2);
+  outline-offset: 2px;
+}
+button:focus:not(:focus-visible) { outline: none; }
 </style>
 </head>
 <body>
+<!-- SW UPDATE BANNER -->
+<div class="update-banner" id="update-banner" role="alert">
+  🔄 <span>Yeni sürüm hazır!</span>
+  <button id="update-btn" type="button">Yükle</button>
+</div>
+
 <div class="app">
 <header>
   <div class="brand">
     <div class="logo">KelimeEdin</div>
     <div class="streak zero" id="streak-badge" title="Günlük seri">🔥 <span id="streak-num">0</span></div>
+    <div class="offline-chip" id="offline-chip" role="status" aria-live="polite">⚡ Çevrimdışı</div>
   </div>
   <button class="icon-btn" id="settings-btn" type="button" aria-label="Ayarlar">
     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.43 12.98c.04-.32.07-.64.07-.98 0-.34-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65A.488.488 0 0 0 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98 0 .33.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>
@@ -603,7 +787,10 @@ input.answer-input:focus { border-color: var(--accent2); background: rgba(255,25
       <div class="swipe-hint left" id="swipe-hint-left">✗ Pas</div>
       <div class="swipe-hint right" id="swipe-hint-right">💡 İpucu</div>
       <div class="cat-emoji" id="cat-emoji">📚</div>
-      <div class="prompt-direction" id="direction">İngilizce → Türkçe</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px">
+        <div class="prompt-direction" id="direction" style="margin-bottom:0">İngilizce → Türkçe</div>
+        <span class="cefr-badge cefr-b1" id="cefr-badge" aria-label="CEFR seviyesi">B1</span>
+      </div>
       <div class="word-row">
         <div class="word-display" id="word-display">—</div>
         <button class="speak-btn" id="main-speak-btn" type="button" aria-label="Oku">
@@ -623,11 +810,16 @@ input.answer-input:focus { border-color: var(--accent2); background: rgba(255,25
         <button class="btn-secondary" id="skip-btn" type="button" title="Bilmiyorum">Pas</button>
       </div>
       <div class="hint-display" id="hint-display"></div>
-      <div class="result-box" id="result-box">
+      <div class="result-box" id="result-box" role="status" aria-live="polite">
         <div class="result-title" id="result-title"></div>
         <div class="result-answer" id="result-answer"></div>
       </div>
-      <button class="next-btn" id="next-btn">Sonraki Kelime →</button>
+      <div class="diff-row" id="diff-row" role="group" aria-label="Zorluk değerlendir">
+        <button class="diff-btn easy" id="diff-easy" type="button">😊 Kolay</button>
+        <button class="diff-btn normal" id="diff-normal" type="button">🙂 Normal</button>
+        <button class="diff-btn hard" id="diff-hard" type="button">😤 Zor</button>
+      </div>
+      <button class="next-btn" id="next-btn" aria-label="Sonraki kelimeye geç">Sonraki Kelime →</button>
       <div class="examples-box" id="examples-box">
         <div class="examples-title">Örnek Cümleler</div>
         <div id="examples-list"></div>
@@ -645,6 +837,7 @@ input.answer-input:focus { border-color: var(--accent2); background: rgba(255,25
       <h3>⭐ Öğrenilen Kelimeler</h3>
       <p>Tekrar tekrar gördüğün ve öğrendiğin kelimeler burada.</p>
     </div>
+    <input type="search" class="search-bar" id="learned-search" placeholder="Kelime ara..." autocomplete="off" aria-label="Öğrenilen kelimeler arasında ara">
     <div id="learned-content"></div>
   </div>
   <div id="page-stats" class="page">
@@ -656,15 +849,22 @@ input.answer-input:focus { border-color: var(--accent2); background: rgba(255,25
       <div class="stat-card"><div class="stat-num blue" id="s-acc">—</div><div class="stat-label">Doğruluk %</div></div>
       <div class="stat-card"><div class="stat-num gold" id="s-streak">0</div><div class="stat-label">🔥 Seri (gün)</div></div>
     </div>
-    <div id="estimate-card" style="display:none" class="install-tip" id="estimate-card">
+    <div id="estimate-card" style="display:none" class="install-tip">
       <strong id="estimate-text">📈 Tahmin hesaplanıyor...</strong>
     </div>
+    <div id="daily-goal-wrap"></div>
     <div class="section-title">Son 7 Gün</div>
     <div class="card" style="padding:14px 14px 10px">
       <div class="week-chart" id="week-chart"></div>
     </div>
     <div class="section-title">En Zor Kelimeler</div>
     <div id="hardest-list"></div>
+    <div class="section-title">🏆 Başarılar</div>
+    <div class="achievements-wrap" id="achievements-wrap"></div>
+    <button class="share-btn" id="share-btn" type="button" aria-label="İlerlemeyi paylaş">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
+      İlerlememi Paylaş
+    </button>
     <div class="section-title">Kategorilere Göre İlerleme</div>
     <div class="cat-list" id="cat-list"></div>
     <div class="install-tip">
@@ -747,7 +947,36 @@ input.answer-input:focus { border-color: var(--accent2); background: rgba(255,25
   </div>
 </div>
 
-<div class="confetti-container" id="confetti"></div>
+<!-- WORD DETAIL MODAL -->
+<div class="modal-backdrop" id="word-detail-modal" role="dialog" aria-modal="true" aria-labelledby="wd-modal-title">
+  <div class="modal" id="word-detail-content">
+    <div class="modal-header">
+      <div class="modal-title" id="wd-modal-title">Kelime Detayı</div>
+      <button class="modal-close" onclick="closeWordDetail()" type="button" aria-label="Kapat">×</button>
+    </div>
+    <p style="color:var(--text-dim);font-size:13px">Yükleniyor...</p>
+  </div>
+</div>
+
+<!-- WEEKLY RECAP MODAL -->
+<div class="modal-backdrop" id="recap-modal" role="dialog" aria-modal="true">
+  <div class="modal" id="recap-content">
+    <p>Yükleniyor...</p>
+  </div>
+</div>
+
+<!-- PWA INSTALL BANNER -->
+<div class="install-banner" id="install-banner" role="complementary">
+  <div class="install-banner-icon">📚</div>
+  <div class="install-banner-text">
+    <strong>Ana Ekrana Ekle</strong>
+    <span>Uygulama gibi çalışır, offline açılır</span>
+  </div>
+  <button class="install-banner-btn" id="install-btn" type="button">Yükle</button>
+  <button class="install-banner-close" id="install-close" type="button" aria-label="Kapat">×</button>
+</div>
+
+<div class="confetti-container" id="confetti" aria-hidden="true"></div>
 
 <script>
 // =====================================================================
@@ -761,6 +990,45 @@ const SETTINGS_KEY = "ke-settings-v1";
 const IPA_KEY = "ke-ipa-v1";
 const RECENT_LEARNED_KEY = "ke-recent-v1";
 const ACTIVITY_KEY = "ke-activity-v1";
+const ACH_KEY = "ke-achievements-v1";
+const NOTES_KEY = "ke-notes-v1";
+const DAILY_GOAL = 20;
+
+// CEFR levels by category (A1-B2)
+const CAT_CEFR = {
+  color: "A1", body: "A1", animal: "A1", time: "A1",
+  people: "A2", food: "A2", home: "A2", clothes: "A2", transport: "A2",
+  nature: "A2", place: "A2",
+  verb: "B1", adj: "B1", prof: "B1", misc: "B1", society: "B1",
+  abstract: "B2", extra: "B2"
+};
+// Word-specific CEFR overrides for very common words
+const WORD_CEFR = {
+  "go":"A1","come":"A1","be":"A1","have":"A1","do":"A1","make":"A1","get":"A1","take":"A1",
+  "see":"A1","know":"A1","say":"A1","want":"A1","give":"A1","use":"A1","find":"A1",
+  "eat":"A1","drink":"A1","sit":"A1","stand":"A1","walk":"A1","run":"A1","sleep":"A1",
+  "read":"A1","write":"A1","open":"A1","close":"A1","buy":"A1","work":"A1","play":"A1",
+  "big":"A1","small":"A1","new":"A1","old":"A1","good":"A1","bad":"A1","hot":"A1","cold":"A1",
+  "happy":"A2","sad":"A2","angry":"B1","beautiful":"A2","clean":"A2","dirty":"A2",
+  "important":"B1","interesting":"B1","difficult":"B1","easy":"A2","possible":"B1",
+  "freedom":"B2","democracy":"B2","consciousness":"B2","responsibility":"B2","opportunity":"B1"
+};
+function getWordCEFR(word) {
+  return WORD_CEFR[word.en.toLowerCase()] || CAT_CEFR[word.cat] || "B1";
+}
+
+const ACHIEVEMENTS = [
+  { id: 'first',       icon: '🎯', title: 'İlk Adım',       desc: '1 doğru cevap ver',           check: (g) => g.correct >= 1 },
+  { id: 'first_learn', icon: '⭐', title: 'İlk Öğrenim',    desc: 'İlk kelimeyi öğren',          check: (g) => g.learned >= 1 },
+  { id: 'streak3',     icon: '🔥', title: '3 Günlük Seri',  desc: '3 gün üst üste çalış',        check: (g, sc, st) => st.current >= 3 },
+  { id: 'streak7',     icon: '💎', title: '1 Hafta Serisi', desc: '7 gün üst üste çalış',        check: (g, sc, st) => st.current >= 7 },
+  { id: 'learned10',   icon: '📚', title: 'Keşfeden',       desc: '10 kelime öğren',             check: (g) => g.learned >= 10 },
+  { id: 'learned50',   icon: '🏆', title: 'Öğrenci',        desc: '50 kelime öğren',             check: (g) => g.learned >= 50 },
+  { id: 'learned100',  icon: '🌟', title: 'Uzman',          desc: '100 kelime öğren',            check: (g) => g.learned >= 100 },
+  { id: 'acc90',       icon: '🎪', title: 'Keskin Zihin',   desc: '%90+ doğruluk (50+ soru)',    check: (g) => g.correct+g.wrong>=50 && g.correct/(g.correct+g.wrong)>=0.9 },
+  { id: 'correct100',  icon: '💪', title: 'Çalışkan',       desc: '100 doğru cevap ver',         check: (g) => g.correct >= 100 },
+  { id: 'struggle',    icon: '⚔️', title: 'Azimli',         desc: 'Zor bir kelimeyi öğren',      check: (g, sc) => Object.values(sc).some(s => s.wasWrong && s.struggleConquered) },
+];
 
 const SR_INTERVALS_DAYS = [0, 1, 2, 4, 7, 14, 30];
 
@@ -800,6 +1068,11 @@ let answered = false;
 let ttsUnlocked = false;
 let voiceRecognition = null;
 let isListening = false;
+let achievements = {}; // { ach_id: timestamp_unlocked }
+let notes = {};        // { word_en: "user's mnemonic note" }
+let deferredInstallPrompt = null;
+let currentTabIndex = 0; // for slide transitions
+const TAB_ORDER = ['play', 'learned', 'stats'];
 
 // =====================================================================
 // DATA LOADER (from words.dat — gzip+base64+reversed)
@@ -857,6 +1130,10 @@ function loadAll() {
     if (rl) recentLearned = JSON.parse(rl);
     const ac = localStorage.getItem(ACTIVITY_KEY);
     if (ac) activity = JSON.parse(ac);
+    const ach = localStorage.getItem(ACH_KEY);
+    if (ach) achievements = JSON.parse(ach);
+    const nt = localStorage.getItem(NOTES_KEY);
+    if (nt) notes = JSON.parse(nt);
   } catch(e) { console.warn('loadAll', e); }
 }
 function save() {
@@ -867,6 +1144,12 @@ function save() {
     localStorage.setItem(RECENT_LEARNED_KEY, JSON.stringify(recentLearned));
     localStorage.setItem(ACTIVITY_KEY, JSON.stringify(activity));
   } catch(e) {}
+}
+function saveAchievements() {
+  try { localStorage.setItem(ACH_KEY, JSON.stringify(achievements)); } catch(e) {}
+}
+function saveNotes() {
+  try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); } catch(e) {}
 }
 
 // =====================================================================
@@ -1077,6 +1360,21 @@ function showWord() {
   const catEmoji = document.getElementById('cat-emoji');
   catEmoji.textContent = CAT_EMOJI[current.cat] || '📚';
 
+  // CEFR badge
+  const cefr = getWordCEFR(current);
+  const cefrEl = document.getElementById('cefr-badge');
+  cefrEl.textContent = cefr;
+  cefrEl.className = 'cefr-badge cefr-' + cefr.toLowerCase().replace(/\//g,'');
+  const leechBadge = document.getElementById('leech-badge-card');
+  if (leechBadge) leechBadge.remove();
+  if (isLeech(current.en)) {
+    const lb = document.createElement('span');
+    lb.id = 'leech-badge-card';
+    lb.className = 'leech-badge';
+    lb.textContent = '🐛 Zor';
+    cefrEl.parentElement.appendChild(lb);
+  }
+
   if (currentDir === "en2tr") {
     direction.textContent = "🇬🇧 İngilizce → 🇹🇷 Türkçe";
     direction.className = "prompt-direction en";
@@ -1117,6 +1415,7 @@ function showWord() {
   document.getElementById('result-box').classList.remove('show', 'correct', 'wrong', 'learned');
   document.getElementById('examples-box').classList.remove('show');
   document.getElementById('next-btn').classList.remove('show');
+  document.getElementById('diff-row').classList.remove('show');
   document.getElementById('word-card').classList.remove('shake');
   updateSessionBar();
   setTimeout(() => input.focus(), 100);
@@ -1266,11 +1565,17 @@ function finalizeAnswer(isCorrect, isSkip) {
 
   setTimeout(() => speak(englishWord, 'en-US'), 250);
 
+  // Show difficulty rating only on correct answers (non-learned)
+  if (isCorrect && !justLearned) {
+    document.getElementById('diff-row').classList.add('show');
+  }
+
   showExamples(current);
   document.getElementById('next-btn').classList.add('show');
 
   save();
   updateMiniStats();
+  checkAchievements();
 
   // Session check
   session.idx++;
@@ -1341,26 +1646,43 @@ function startNewSession() {
   showWord();
 }
 
+function animateCounter(el, target) {
+  if (!el) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = target; return; }
+  const start = parseInt(el.textContent) || 0;
+  if (start === target) return;
+  const duration = Math.min(500, Math.abs(target - start) * 25 + 150);
+  const startTime = performance.now();
+  function step(now) {
+    const p = Math.min(1, (now - startTime) / duration);
+    el.textContent = Math.round(start + (target - start) * (1 - Math.pow(1 - p, 3)));
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
 function updateMiniStats() {
-  document.getElementById('mini-correct').textContent = global.correct;
-  document.getElementById('mini-wrong').textContent = global.wrong;
-  document.getElementById('mini-learned').textContent = global.learned;
+  animateCounter(document.getElementById('mini-correct'), global.correct);
+  animateCounter(document.getElementById('mini-wrong'), global.wrong);
+  animateCounter(document.getElementById('mini-learned'), global.learned);
   const total = global.correct + global.wrong;
   document.getElementById('mini-acc').textContent = total > 0 ? Math.round(global.correct / total * 100) + '%' : '—';
 }
 
 function renderStats() {
-  document.getElementById('s-total').textContent = WORDS.length;
-  document.getElementById('s-correct').textContent = global.correct;
-  document.getElementById('s-wrong').textContent = global.wrong;
-  document.getElementById('s-learned').textContent = global.learned;
+  animateCounter(document.getElementById('s-total'), WORDS.length);
+  animateCounter(document.getElementById('s-correct'), global.correct);
+  animateCounter(document.getElementById('s-wrong'), global.wrong);
+  animateCounter(document.getElementById('s-learned'), global.learned);
   const total = global.correct + global.wrong;
   document.getElementById('s-acc').textContent = total > 0 ? Math.round(global.correct / total * 100) + '%' : '—';
-  document.getElementById('s-streak').textContent = streak.current;
+  animateCounter(document.getElementById('s-streak'), streak.current);
 
   renderWeeklyChart();
   renderHardestWords();
   renderEstimate();
+  renderDailyGoal();
+  renderAchievements();
 
   const catStats = {};
   WORDS.forEach(w => {
@@ -1455,7 +1777,7 @@ function renderLearned() {
     else easy.push(w);
   });
   if (struggle.length === 0 && easy.length === 0 && recentLearned.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="emoji">🌱</div><p>Henüz öğrenilmiş kelime yok.<br>Çalışmaya devam et!</p></div>';
+    container.innerHTML = '<div class="empty-state"><span class="emoji">🌱</span><h3>Henüz öğrenilen kelime yok</h3><p>Çalışmaya devam et — öğrendiğin kelimeler burada görünecek!</p><button class="cta-btn" onclick="switchTab(\'play\')">Öğrenmeye Başla →</button></div>';
     return;
   }
   let html = '';
@@ -1463,7 +1785,7 @@ function renderLearned() {
     html += '<div class="learned-section"><div class="learned-section-title">🆕 Son Öğrendiklerin <span class="badge recent">' + Math.min(10, recentLearned.length) + '</span></div>';
     recentLearned.slice(0, 10).forEach(w => {
       const ago = formatAgo(Date.now() - w.ts);
-      html += '<div class="learned-word recent"><div><div class="lw-en">' + escape(w.en) + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div class="lw-meta">' + ago + '</div></div>';
+      html += '<div class="learned-word recent" data-word="' + escape(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div class="lw-meta">' + ago + ' ›</div></div>';
     });
     html += '</div>';
   }
@@ -1471,7 +1793,8 @@ function renderLearned() {
     html += '<div class="learned-section"><div class="learned-section-title">💪 Zoru Başardın <span class="badge">' + struggle.length + '</span></div>';
     struggle.forEach(w => {
       const s = scores[w.en];
-      html += '<div class="learned-word struggle"><div><div class="lw-en">' + escape(w.en) + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div class="lw-meta gold">' + s.correct + ' ✓ • ' + s.wrong + ' ✗</div></div>';
+      const leechMark = isLeech(w.en) ? '<span class="leech-badge">🐛</span>' : '';
+      html += '<div class="learned-word struggle" data-word="' + escape(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + leechMark + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div class="lw-meta gold">' + s.correct + ' ✓ • ' + s.wrong + ' ✗ ›</div></div>';
     });
     html += '</div>';
   }
@@ -1479,7 +1802,7 @@ function renderLearned() {
     html += '<div class="learned-section"><div class="learned-section-title">✨ Hızlıca Öğrendin <span class="badge">' + easy.length + '</span></div>';
     easy.forEach(w => {
       const s = scores[w.en];
-      html += '<div class="learned-word"><div><div class="lw-en">' + escape(w.en) + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div class="lw-meta">' + s.correct + ' ✓</div></div>';
+      html += '<div class="learned-word" data-word="' + escape(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div class="lw-meta">' + s.correct + ' ✓ ›</div></div>';
     });
     html += '</div>';
   }
@@ -1576,6 +1899,325 @@ function resetProgress() {
 }
 
 // =====================================================================
+// LEECH DETECTION
+// =====================================================================
+function isLeech(en) {
+  const s = scores[en];
+  return s && s.wrong >= 5;
+}
+
+// =====================================================================
+// DIFFICULTY RATING (manual SR adjustment)
+// =====================================================================
+function applyDifficulty(level) {
+  if (!current || !answered) return;
+  const s = getScore(current.en);
+  if (level === 'easy') {
+    s.bucket = Math.min(SR_INTERVALS_DAYS.length - 1, s.bucket + 1);
+  } else if (level === 'hard') {
+    s.bucket = Math.max(0, s.bucket - 1);
+  }
+  // level === 'normal' → keep current bucket unchanged
+  const days = SR_INTERVALS_DAYS[s.bucket] || 1;
+  s.dueAt = Date.now() + days * 86400000;
+  save();
+  const row = document.getElementById('diff-row');
+  row.querySelectorAll('.diff-btn').forEach(b => { b.disabled = true; b.style.opacity = '0.4'; });
+  const chosen = document.getElementById('diff-' + level);
+  if (chosen) { chosen.style.opacity = '1'; chosen.style.fontWeight = '900'; }
+}
+
+// =====================================================================
+// ACHIEVEMENTS
+// =====================================================================
+function checkAchievements() {
+  const newOnes = [];
+  for (const a of ACHIEVEMENTS) {
+    if (achievements[a.id]) continue;
+    if (a.check(global, scores, streak)) {
+      achievements[a.id] = Date.now();
+      newOnes.push(a);
+    }
+  }
+  if (newOnes.length) {
+    saveAchievements();
+    newOnes.forEach(showAchievementToast);
+  }
+}
+function showAchievementToast(a) {
+  const toast = document.createElement('div');
+  toast.style.cssText = [
+    'position:fixed', 'top:calc(var(--safe-top) + 72px)', 'left:50%', 'transform:translateX(-50%)',
+    'z-index:300', 'background:var(--gradient-gold)', 'color:#1a0e2a',
+    'padding:10px 20px', 'border-radius:14px', 'font-size:13px', 'font-weight:700',
+    'white-space:nowrap', 'box-shadow:0 8px 24px rgba(255,140,0,0.4)',
+    'animation:fadePop 0.4s ease-out', 'pointer-events:none'
+  ].join(';');
+  toast.setAttribute('role', 'alert');
+  toast.textContent = a.icon + ' ' + a.title + ' kazanıldı!';
+  document.body.appendChild(toast);
+  setTimeout(() => { toast.style.transition = 'opacity 0.4s'; toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 2800);
+}
+function renderAchievements() {
+  const wrap = document.getElementById('achievements-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = ACHIEVEMENTS.map(a => {
+    const unlocked = !!achievements[a.id];
+    return '<div class="ach-card ' + (unlocked ? 'unlocked' : 'locked') + '">' +
+      '<div class="ach-icon">' + a.icon + '</div>' +
+      '<div><div class="ach-title">' + escape(a.title) + '</div>' +
+      '<div class="ach-desc">' + escape(a.desc) + '</div></div></div>';
+  }).join('');
+}
+
+// =====================================================================
+// DAILY GOAL RING
+// =====================================================================
+function getTodayCount() {
+  const today = todayKey();
+  const a = activity[today] || { correct: 0, wrong: 0 };
+  return a.correct + a.wrong;
+}
+function renderDailyGoal() {
+  const wrap = document.getElementById('daily-goal-wrap');
+  if (!wrap) return;
+  const count = getTodayCount();
+  const pct = Math.min(100, (count / DAILY_GOAL) * 100);
+  const done = pct >= 100;
+  const r = 36; const circ = 2 * Math.PI * r;
+  const dash = circ - (pct / 100) * circ;
+  const clr = done ? '#ffd700' : '#4facfe';
+  const numStyle = done
+    ? 'background:var(--gradient-gold);-webkit-background-clip:text;background-clip:text;color:transparent'
+    : 'color:var(--text)';
+  wrap.innerHTML = '<div class="goal-ring-wrap">' +
+    '<div class="goal-ring-svg-wrap"><svg width="88" height="88" viewBox="0 0 88 88">' +
+      '<circle cx="44" cy="44" r="' + r + '" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="7"/>' +
+      '<circle cx="44" cy="44" r="' + r + '" fill="none" stroke="' + clr + '" stroke-width="7"' +
+      ' stroke-dasharray="' + circ.toFixed(2) + '" stroke-dashoffset="' + dash.toFixed(2) + '"' +
+      ' stroke-linecap="round" transform="rotate(-90 44 44)" style="transition:stroke-dashoffset 0.8s ease"/>' +
+    '</svg>' +
+    '<div class="goal-ring-label">' +
+      '<div class="goal-ring-num" style="' + numStyle + '">' + count + '</div>' +
+      '<div class="goal-ring-sub">/ ' + DAILY_GOAL + '</div>' +
+    '</div></div>' +
+    '<div class="goal-ring-info">' +
+      '<div class="goal-ring-title">' + (done ? '🎉 Günlük Hedef Tamam!' : '🎯 Günlük Hedef') + '</div>' +
+      '<div class="goal-ring-desc">' + (done
+        ? 'Harika! ' + count + ' soru çözdün. Devam edebilirsin!'
+        : count + '/' + DAILY_GOAL + ' soru tamamlandı. ' + (DAILY_GOAL - count) + ' tane kaldı!') + '</div>' +
+    '</div></div>';
+}
+
+// =====================================================================
+// WORD DETAIL MODAL
+// =====================================================================
+function openWordDetailByEn(en) {
+  const word = WORDS.find(w => w.en === en);
+  if (!word) return;
+  openWordDetail(word);
+}
+function openWordDetail(word) {
+  const s = scores[word.en] || {};
+  const cefr = getWordCEFR(word);
+  const correct = s.correct || 0, wrong = s.wrong || 0;
+  const acc = correct + wrong > 0 ? Math.round(correct / (correct + wrong) * 100) : 0;
+  const note = notes[word.en] || '';
+  const dueIn = s.dueAt ? Math.max(0, Math.ceil((s.dueAt - Date.now()) / 86400000)) : 0;
+  const modal = document.getElementById('word-detail-modal');
+  const content = document.getElementById('word-detail-content');
+  content.innerHTML =
+    '<div class="modal-header">' +
+      '<div class="modal-title">' + escape(word.en) + '</div>' +
+      '<button class="modal-close" onclick="closeWordDetail()" type="button" aria-label="Kapat">×</button>' +
+    '</div>' +
+    '<div style="margin-bottom:12px">' +
+      '<span class="cefr-badge cefr-' + cefr.toLowerCase() + '">' + cefr + '</span>' +
+      (isLeech(word.en) ? '<span class="leech-badge">🐛 Zor kelime</span>' : '') +
+    '</div>' +
+    '<div style="font-family:Fraunces,serif;font-size:26px;font-weight:900;margin-bottom:4px">' + escape(word.tr) + '</div>' +
+    '<div style="font-size:12px;color:var(--text-dim);margin-bottom:14px">' + (CAT_LABELS[word.cat] || word.cat) + (dueIn > 0 ? ' · Tekrar: ' + dueIn + ' gün sonra' : '') + '</div>' +
+    '<div class="wd-score-row">' +
+      '<div class="wd-score-item"><div class="wd-score-num" style="color:#43e97b">' + correct + '</div><div class="wd-score-label">Doğru</div></div>' +
+      '<div class="wd-score-item"><div class="wd-score-num" style="color:#f5576c">' + wrong + '</div><div class="wd-score-label">Yanlış</div></div>' +
+      '<div class="wd-score-item"><div class="wd-score-num" style="color:#4facfe">' + acc + '%</div><div class="wd-score-label">Doğruluk</div></div>' +
+    '</div>' +
+    '<div class="modal-section"><h4>Örnek Cümleler</h4>' +
+    word.ex.map(ex =>
+      '<div class="example-item">' +
+      '<div class="example-en"><button class="ex-speak" onclick="speak(\'' + escape(ex.en.replace(/'/g,"\\'")) + '\',\'en-US\')" type="button"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg></button><span>' + escape(ex.en) + '</span></div>' +
+      '<div class="example-tr">' + escape(ex.tr) + '</div>' +
+      '</div>'
+    ).join('') + '</div>' +
+    '<div class="modal-section"><h4>Hafıza Notu (İpucu)</h4>' +
+      '<textarea class="wd-note" id="wd-note-input" placeholder="Bu kelimeyi hatırlamak için bir çağrışım yaz...">' + escape(note) + '</textarea>' +
+      '<button class="btn-row" id="wd-save-note" onclick="saveWordNote(\'' + escape(word.en) + '\')" style="margin-top:8px;width:100%" type="button">💾 Notu Kaydet</button>' +
+    '</div>';
+  modal.classList.add('show');
+}
+function closeWordDetail() {
+  document.getElementById('word-detail-modal').classList.remove('show');
+}
+function saveWordNote(en) {
+  const val = document.getElementById('wd-note-input')?.value || '';
+  notes[en] = val;
+  saveNotes();
+  const btn = document.getElementById('wd-save-note');
+  if (btn) {
+    btn.textContent = '✅ Kaydedildi!';
+    setTimeout(() => { if (btn) btn.textContent = '💾 Notu Kaydet'; }, 1500);
+  }
+}
+
+// =====================================================================
+// SHARE CARD (Canvas → PNG)
+// =====================================================================
+function shareCard() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 640; canvas.height = 360;
+  const ctx = canvas.getContext('2d');
+  // Background
+  ctx.fillStyle = '#0a0818';
+  ctx.fillRect(0, 0, 640, 360);
+  // Gradient overlay
+  const grd = ctx.createLinearGradient(0, 0, 640, 360);
+  grd.addColorStop(0, 'rgba(245,87,108,0.08)');
+  grd.addColorStop(1, 'rgba(102,126,234,0.08)');
+  ctx.fillStyle = grd; ctx.fillRect(0, 0, 640, 360);
+  // Title
+  ctx.fillStyle = '#f5576c';
+  ctx.font = 'bold 32px serif';
+  ctx.fillText('KelimeEdin', 48, 72);
+  ctx.fillStyle = '#8a8295';
+  ctx.font = '14px sans-serif';
+  ctx.fillText('oknkeles.github.io/KelimeEdin', 48, 96);
+  // Stats
+  const stats = [
+    { label: 'Öğrenilen', value: String(global.learned), color: '#ffd700' },
+    { label: 'Doğru', value: String(global.correct), color: '#43e97b' },
+    { label: 'Seri', value: streak.current + ' gün', color: '#ff9500' },
+    { label: 'Doğruluk', value: (global.correct+global.wrong > 0 ? Math.round(global.correct/(global.correct+global.wrong)*100) : 0) + '%', color: '#4facfe' },
+  ];
+  stats.forEach((s, i) => {
+    const x = 48 + (i % 2) * 280, y = 160 + Math.floor(i / 2) * 90;
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    roundRect(ctx, x, y, 250, 70, 12); ctx.fill();
+    ctx.fillStyle = s.color;
+    ctx.font = 'bold 28px serif';
+    ctx.fillText(s.value, x + 16, y + 38);
+    ctx.fillStyle = '#5a5468';
+    ctx.font = '12px sans-serif';
+    ctx.fillText(s.label.toUpperCase(), x + 16, y + 58);
+  });
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.font = '12px sans-serif';
+  ctx.fillText('📚 ' + WORDS.length + ' kelime · Spaced Repetition · PWA', 48, 330);
+  canvas.toBlob(blob => {
+    if (!blob) return;
+    if (navigator.share) {
+      const file = new File([blob], 'kelimeedin.png', { type: 'image/png' });
+      navigator.share({ files: [file], title: 'KelimeEdin İlerlemem', text: global.learned + ' kelime öğrendim!' }).catch(() => downloadBlob(blob));
+    } else { downloadBlob(blob); }
+  }, 'image/png');
+}
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+  ctx.arcTo(x+w,y,x+w,y+r,r); ctx.lineTo(x+w,y+h-r);
+  ctx.arcTo(x+w,y+h,x+w-r,y+h,r); ctx.lineTo(x+r,y+h);
+  ctx.arcTo(x,y+h,x,y+h-r,r); ctx.lineTo(x,y+r);
+  ctx.arcTo(x,y,x+r,y,r); ctx.closePath();
+}
+function downloadBlob(blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'kelimeedin-ilerleme.png'; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// =====================================================================
+// WEEKLY RECAP (Sundays)
+// =====================================================================
+function getWeekNum(d) {
+  const jan1 = new Date(d.getFullYear(), 0, 1);
+  return Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
+}
+function checkWeeklyRecap() {
+  const today = new Date();
+  if (today.getDay() !== 0) return; // Only Sundays
+  const weekKey = today.getFullYear() + '-W' + getWeekNum(today);
+  if (localStorage.getItem('ke-last-recap') === weekKey) return;
+  localStorage.setItem('ke-last-recap', weekKey);
+  setTimeout(showWeeklyRecap, 3000);
+}
+function showWeeklyRecap() {
+  const today = new Date();
+  let totalCorrect = 0, totalWrong = 0, totalLearned = 0, activeDays = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today); d.setDate(today.getDate() - i);
+    const key = d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+    const a = activity[key] || {};
+    totalCorrect += a.correct || 0;
+    totalWrong += a.wrong || 0;
+    totalLearned += a.learned || 0;
+    if ((a.correct || 0) + (a.wrong || 0) > 0) activeDays++;
+  }
+  const total = totalCorrect + totalWrong;
+  const acc = total > 0 ? Math.round(totalCorrect / total * 100) : 0;
+  const msg = total === 0 ? 'Bu hafta çalışma yapılmadı. Hadi başla! 💪'
+    : acc >= 80 ? '🔥 Harika bir hafta! Böyle devam et.'
+    : acc >= 60 ? '💪 İyi gidiyorsun, devam et!'
+    : '📚 Her gün biraz daha — gelecek hafta daha iyi!';
+  const modal = document.getElementById('recap-modal');
+  const content = document.getElementById('recap-content');
+  content.innerHTML =
+    '<div class="modal-header">' +
+      '<div class="modal-title">📅 Haftalık Özet</div>' +
+      '<button class="modal-close" onclick="document.getElementById(\'recap-modal\').classList.remove(\'show\')" type="button">×</button>' +
+    '</div>' +
+    '<p style="font-size:13px;color:var(--text-dim);margin-bottom:12px">Bu haftanın istatistikleri:</p>' +
+    '<div class="recap-grid">' +
+      '<div class="recap-stat"><div class="recap-num" style="color:#43e97b">' + totalCorrect + '</div><div class="recap-label">Doğru</div></div>' +
+      '<div class="recap-stat"><div class="recap-num" style="color:#f5576c">' + totalWrong + '</div><div class="recap-label">Yanlış</div></div>' +
+      '<div class="recap-stat"><div class="recap-num" style="color:#ffd700">' + totalLearned + '</div><div class="recap-label">Öğrenilen</div></div>' +
+      '<div class="recap-stat"><div class="recap-num" style="color:#4facfe">' + activeDays + '/7</div><div class="recap-label">Aktif Gün</div></div>' +
+    '</div>' +
+    '<p style="font-size:13px;color:var(--text-dim);text-align:center;margin-bottom:16px">' + msg + '</p>' +
+    '<button class="btn-primary" onclick="document.getElementById(\'recap-modal\').classList.remove(\'show\')" style="width:100%" type="button">Yeni Haftaya →</button>';
+  modal.classList.add('show');
+}
+
+// =====================================================================
+// ONLINE / OFFLINE INDICATOR
+// =====================================================================
+function updateOnlineStatus() {
+  const chip = document.getElementById('offline-chip');
+  if (chip) chip.classList.toggle('show', !navigator.onLine);
+}
+
+// =====================================================================
+// TAB SWITCHING (with slide transition)
+// =====================================================================
+function switchTab(tab) {
+  const toIndex = TAB_ORDER.indexOf(tab);
+  if (toIndex === -1) return;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const page = document.getElementById('page-' + tab);
+  if (!page) return;
+  // Slide direction based on tab order
+  const dir = toIndex > currentTabIndex ? 'right' : 'left';
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    page.style.animation = 'none';
+    void page.offsetWidth; // reflow
+    page.style.animation = 'slideIn' + (dir === 'right' ? 'Right' : 'Left') + ' 0.22s ease-out';
+  }
+  page.classList.add('active');
+  currentTabIndex = toIndex;
+  if (tab === 'stats') renderStats();
+  if (tab === 'learned') renderLearned();
+}
+
+// =====================================================================
 // INIT
 // =====================================================================
 async function init() {
@@ -1614,10 +2256,23 @@ async function init() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (SR && settings.voiceEnabled) document.getElementById('voice-btn').style.display = 'inline-flex';
 
-  // Service worker
+  // Service worker with update detection
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(()=>{});
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      reg.addEventListener('updatefound', () => {
+        const newSW = reg.installing;
+        if (!newSW) return;
+        newSW.addEventListener('statechange', () => {
+          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+            document.getElementById('update-banner').classList.add('show');
+          }
+        });
+      });
+    }).catch(() => {});
   }
+
+  // Weekly recap (Sundays only)
+  checkWeeklyRecap();
 }
 
 // =====================================================================
@@ -1738,15 +2393,7 @@ function checkNotifBanner() {
 function bindUI() {
   // Bottom nav tabs
   document.querySelectorAll('.nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      const tab = btn.dataset.tab;
-      document.getElementById('page-' + tab).classList.add('active');
-      if (tab === 'stats') renderStats();
-      if (tab === 'learned') renderLearned();
-    });
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
 
   document.getElementById('check-btn').addEventListener('click', () => { unlockTTS(); checkAnswer(); });
@@ -1831,6 +2478,57 @@ function bindUI() {
     if (e.target.files[0]) importData(e.target.files[0]);
   });
   document.getElementById('reset-btn').addEventListener('click', resetProgress);
+
+  // Difficulty buttons
+  document.getElementById('diff-easy').addEventListener('click', () => applyDifficulty('easy'));
+  document.getElementById('diff-normal').addEventListener('click', () => applyDifficulty('normal'));
+  document.getElementById('diff-hard').addEventListener('click', () => applyDifficulty('hard'));
+
+  // Search in learned
+  const learnedSearch = document.getElementById('learned-search');
+  if (learnedSearch) {
+    learnedSearch.addEventListener('input', e => {
+      const q = e.target.value.toLowerCase().trim();
+      document.querySelectorAll('#learned-content .learned-word').forEach(el => {
+        const en = el.querySelector('.lw-en')?.textContent.toLowerCase() || '';
+        const tr = el.querySelector('.lw-tr')?.textContent.toLowerCase() || '';
+        el.style.display = (!q || en.includes(q) || tr.includes(q)) ? '' : 'none';
+      });
+    });
+  }
+
+  // Share card button
+  const shareBtn = document.getElementById('share-btn');
+  if (shareBtn) shareBtn.addEventListener('click', shareCard);
+
+  // SW update banner
+  document.getElementById('update-btn').addEventListener('click', () => window.location.reload());
+
+  // Online/offline
+  updateOnlineStatus();
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+
+  // PWA install banner
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (!localStorage.getItem('ke-install-dismissed')) {
+      setTimeout(() => document.getElementById('install-banner').classList.add('show'), 3000);
+    }
+  });
+  document.getElementById('install-btn').addEventListener('click', async () => {
+    document.getElementById('install-banner').classList.remove('show');
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice.catch(() => {});
+      deferredInstallPrompt = null;
+    }
+  });
+  document.getElementById('install-close').addEventListener('click', () => {
+    document.getElementById('install-banner').classList.remove('show');
+    localStorage.setItem('ke-install-dismissed', '1');
+  });
 
   // First user interaction unlocks TTS
   document.body.addEventListener('touchstart', unlockTTS, { once: true });
