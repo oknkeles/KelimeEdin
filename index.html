@@ -1056,7 +1056,7 @@ const RECENT_LEARNED_KEY = "ke-recent-v1";
 const ACTIVITY_KEY = "ke-activity-v1";
 const ACH_KEY = "ke-achievements-v1";
 const NOTES_KEY = "ke-notes-v1";
-const CEFR_PROGRESS_KEY = "ke-cefr-v1";
+const CEFR_PROGRESS_KEY = "ke-cefr-v2";
 const DAILY_GOAL = 20;
 
 const CEFR_ORDER = ['A1', 'A2', 'B1', 'B2'];
@@ -1979,7 +1979,10 @@ function renderLearned() {
     html += '<div class="learned-section"><div class="learned-section-title">🆕 Son Öğrendiklerin <span class="badge recent">' + Math.min(10, recentLearned.length) + '</span></div>';
     recentLearned.slice(0, 10).forEach(w => {
       const ago = formatAgo(Date.now() - w.ts);
-      html += '<div class="learned-word recent" data-word="' + escape(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div class="lw-meta">' + ago + ' ›</div></div>';
+      const wObj = WORDS.find(x => x.en === w.en);
+      const cefr = wObj ? getWordCEFR(wObj) : '';
+      const cefrHtml = cefr ? '<span class="cefr-badge cefr-' + cefr.toLowerCase() + '" style="font-size:9px;padding:2px 6px;margin-left:4px;vertical-align:middle">' + cefr + '</span>' : '';
+      html += '<div class="learned-word recent" data-word="' + escape(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + cefrHtml + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div class="lw-meta">' + ago + ' ›</div></div>';
     });
     html += '</div>';
   }
@@ -1988,7 +1991,9 @@ function renderLearned() {
     struggle.forEach(w => {
       const s = scores[w.en];
       const leechMark = isLeech(w.en) ? '<span class="leech-badge">🐛</span>' : '';
-      html += '<div class="learned-word struggle" data-word="' + escape(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + leechMark + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div class="lw-meta gold">' + s.correct + ' ✓ • ' + s.wrong + ' ✗ ›</div></div>';
+      const cefr = getWordCEFR(w);
+      const cefrHtml = cefr ? '<span class="cefr-badge cefr-' + cefr.toLowerCase() + '" style="font-size:9px;padding:2px 6px;margin-left:4px;vertical-align:middle">' + cefr + '</span>' : '';
+      html += '<div class="learned-word struggle" data-word="' + escape(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + cefrHtml + leechMark + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div class="lw-meta gold">' + s.correct + ' ✓ • ' + s.wrong + ' ✗ ›</div></div>';
     });
     html += '</div>';
   }
@@ -1996,7 +2001,9 @@ function renderLearned() {
     html += '<div class="learned-section"><div class="learned-section-title">✨ Hızlıca Öğrendin <span class="badge">' + easy.length + '</span></div>';
     easy.forEach(w => {
       const s = scores[w.en];
-      html += '<div class="learned-word" data-word="' + escape(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div class="lw-meta">' + s.correct + ' ✓ ›</div></div>';
+      const cefr = getWordCEFR(w);
+      const cefrHtml = cefr ? '<span class="cefr-badge cefr-' + cefr.toLowerCase() + '" style="font-size:9px;padding:2px 6px;margin-left:4px;vertical-align:middle">' + cefr + '</span>' : '';
+      html += '<div class="learned-word" data-word="' + escape(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + cefrHtml + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div class="lw-meta">' + s.correct + ' ✓ ›</div></div>';
     });
     html += '</div>';
   }
@@ -2458,9 +2465,9 @@ async function init() {
     }
   });
 
-  // Auto-detect CEFR level for existing users (first time only)
+  // Always start at A1 — levels must be earned through 75% accuracy
   if (!localStorage.getItem(CEFR_PROGRESS_KEY)) {
-    cefrProgress.unlockedLevel = detectCefrLevel();
+    cefrProgress.unlockedLevel = 0;
     saveCefrProgress();
   }
 
