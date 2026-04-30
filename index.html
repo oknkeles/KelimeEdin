@@ -1609,11 +1609,11 @@ function finalizeAnswer(isCorrect, isSkip) {
   updateMiniStats();
   checkAchievements();
 
-  // Scroll result box into view (fixes mobile keyboard-hiding-content issue)
+  // Scroll result into view — show result + examples together
   setTimeout(() => {
     const rb = document.getElementById('result-box');
-    if (rb) rb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, 120);
+    if (rb) rb.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 150);
 }
 
 function useHint() {
