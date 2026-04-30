@@ -2641,7 +2641,11 @@ function bindUI() {
   });
 
   document.getElementById('check-btn').addEventListener('click', () => { unlockTTS(); checkAnswer(); });
-  document.getElementById('next-btn').addEventListener('click', showWord);
+  document.getElementById('next-btn').addEventListener('click', () => {
+    const inp = document.getElementById('answer-input');
+    inp.disabled = false; inp.focus(); // iOS: klavye click anında açılsın
+    showWord();
+  });
   document.getElementById('hint-btn').addEventListener('click', useHint);
   document.getElementById('skip-btn').addEventListener('click', skipAnswer);
   document.getElementById('next-session-btn').addEventListener('click', startNewSession);
