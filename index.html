@@ -127,6 +127,54 @@ main { max-width: 720px; margin: 0 auto; padding: 0 14px calc(80px + var(--safe-
 }
 @keyframes slideInRight { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes slideInLeft  { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: translateX(0); } }
+/* --- CEFR ROAD MAP --- */
+.cefr-roadmap {
+  display: flex; align-items: center; gap: 4px;
+  padding: 2px 4px 10px; overflow-x: auto;
+  scrollbar-width: none;
+}
+.cefr-roadmap::-webkit-scrollbar { display: none; }
+.cefr-rm-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 4px 10px; border-radius: 100px; white-space: nowrap;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.5px;
+  border: 1.5px solid transparent; transition: all 0.3s;
+}
+.cefr-rm-chip.active {
+  background: rgba(67,233,123,0.12); color: #43e97b;
+  border-color: rgba(67,233,123,0.35);
+}
+.cefr-rm-chip.current {
+  background: linear-gradient(135deg,rgba(79,172,254,0.18),rgba(0,242,254,0.06));
+  color: #4facfe; border-color: rgba(79,172,254,0.4);
+  box-shadow: 0 0 10px rgba(79,172,254,0.2);
+}
+.cefr-rm-chip.locked {
+  color: var(--text-muted); border-color: rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03);
+}
+.cefr-rm-arrow { color: var(--text-muted); font-size: 10px; flex-shrink: 0; }
+
+/* --- LEVEL UP CARD (in session summary) --- */
+.levelup-card {
+  display: none; margin: 12px 0 8px;
+  padding: 14px 16px; border-radius: 14px;
+  background: linear-gradient(135deg, rgba(67,233,123,0.18), rgba(56,249,215,0.08));
+  border: 1.5px solid rgba(67,233,123,0.4);
+}
+.levelup-card.show { display: block; animation: fadePop 0.5s ease-out; }
+.levelup-card h4 {
+  font-family: 'Fraunces', serif; font-weight: 900; font-size: 17px;
+  color: #43e97b; margin-bottom: 4px;
+}
+.levelup-card p { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+
+/* --- ACCURACY PROGRESS BAR (in summary) --- */
+.acc-bar-wrap { margin: 10px 0 4px; }
+.acc-bar-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-dim); margin-bottom: 4px; font-weight: 600; }
+.acc-bar { height: 6px; background: rgba(255,255,255,0.06); border-radius: 6px; overflow: hidden; }
+.acc-bar-fill { height: 100%; border-radius: 6px; transition: width 0.8s ease-out; }
+
 @keyframes achFlash { 0%{opacity:1} 100%{opacity:0} }
 @keyframes achBanner {
   0%   { opacity:0; transform:translate(-50%,-50%) scale(0.6); }
@@ -772,15 +820,25 @@ button:focus:not(:focus-visible) { outline: none; }
       <span id="session-label">Seans 1/20</span>
       <div class="session-progress"><div class="session-progress-fill" id="session-fill"></div></div>
     </div>
+    <div class="cefr-roadmap" id="cefr-roadmap" aria-label="CEFR seviye yolu"></div>
 
     <div class="session-summary" id="session-summary">
-      <h3>🎉 Seans Bitti!</h3>
+      <h3 id="summary-title">🎉 Seans Bitti!</h3>
       <p id="summary-sub">Harika gidiyorsun</p>
+      <div class="acc-bar-wrap">
+        <div class="acc-bar-label"><span>Doğruluk</span><span id="sum-acc-pct">—</span></div>
+        <div class="acc-bar"><div class="acc-bar-fill" id="sum-acc-fill" style="width:0%"></div></div>
+      </div>
+      <div class="levelup-card" id="levelup-card">
+        <h4 id="levelup-title">🚀 Seviye Atlandı!</h4>
+        <p id="levelup-desc">Yeni kelimeler açıldı.</p>
+      </div>
       <div class="summary-grid">
         <div class="summary-stat"><div class="summary-stat-num" style="color:#43e97b" id="sum-correct">0</div><div class="summary-stat-label">Doğru</div></div>
         <div class="summary-stat"><div class="summary-stat-num" style="color:#f5576c" id="sum-wrong">0</div><div class="summary-stat-label">Yanlış</div></div>
         <div class="summary-stat"><div class="summary-stat-num" style="color:#ffd700" id="sum-learned">0</div><div class="summary-stat-label">Yeni</div></div>
       </div>
+      <div class="cefr-roadmap" id="cefr-roadmap-summary" style="justify-content:center;padding:8px 0 12px"></div>
       <button class="btn-primary" id="next-session-btn">Yeni Seans →</button>
     </div>
 
@@ -998,7 +1056,12 @@ const RECENT_LEARNED_KEY = "ke-recent-v1";
 const ACTIVITY_KEY = "ke-activity-v1";
 const ACH_KEY = "ke-achievements-v1";
 const NOTES_KEY = "ke-notes-v1";
+const CEFR_PROGRESS_KEY = "ke-cefr-v1";
 const DAILY_GOAL = 20;
+
+const CEFR_ORDER = ['A1', 'A2', 'B1', 'B2'];
+const CEFR_COLORS = { A1: '#43e97b', A2: '#38f9d7', B1: '#4facfe', B2: '#b78ffc' };
+const LEVEL_UP_THRESHOLD = 0.75; // %75 doğruluk
 
 // CEFR levels by category (A1-B2)
 const CAT_CEFR = {
@@ -1074,10 +1137,11 @@ let answered = false;
 let ttsUnlocked = false;
 let voiceRecognition = null;
 let isListening = false;
-let achievements = {}; // { ach_id: timestamp_unlocked }
-let notes = {};        // { word_en: "user's mnemonic note" }
+let achievements = {};
+let notes = {};
+let cefrProgress = { unlockedLevel: 0 }; // 0=A1only, 1=A1+A2, 2=+B1, 3=+B2
 let deferredInstallPrompt = null;
-let currentTabIndex = 0; // for slide transitions
+let currentTabIndex = 0;
 const TAB_ORDER = ['play', 'learned', 'stats'];
 
 // =====================================================================
@@ -1140,6 +1204,8 @@ function loadAll() {
     if (ach) achievements = JSON.parse(ach);
     const nt = localStorage.getItem(NOTES_KEY);
     if (nt) notes = JSON.parse(nt);
+    const cp = localStorage.getItem(CEFR_PROGRESS_KEY);
+    if (cp) cefrProgress = JSON.parse(cp);
   } catch(e) { console.warn('loadAll', e); }
 }
 function save() {
@@ -1156,6 +1222,9 @@ function saveAchievements() {
 }
 function saveNotes() {
   try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); } catch(e) {}
+}
+function saveCefrProgress() {
+  try { localStorage.setItem(CEFR_PROGRESS_KEY, JSON.stringify(cefrProgress)); } catch(e) {}
 }
 
 // =====================================================================
@@ -1229,9 +1298,14 @@ function pickNext() {
     return retryCandidate.word;
   }
 
-  const filter = settings.catFilter || [];
-  let pool = WORDS;
-  if (filter.length > 0) pool = WORDS.filter(w => filter.includes(w.cat));
+  const unlockedLevels = CEFR_ORDER.slice(0, cefrProgress.unlockedLevel + 1);
+  const catFilter = settings.catFilter || [];
+  let pool = WORDS.filter(w => unlockedLevels.includes(getWordCEFR(w)));
+  if (catFilter.length > 0) {
+    const filtered = pool.filter(w => catFilter.includes(w.cat));
+    if (filtered.length > 0) pool = filtered;
+  }
+  if (pool.length === 0) pool = WORDS.filter(w => unlockedLevels.includes(getWordCEFR(w)));
   if (pool.length === 0) pool = WORDS;
 
   // Prefer due (review-time) words first
@@ -1659,15 +1733,104 @@ function updateSessionBar() {
   document.getElementById('session-fill').style.width = pct + '%';
 }
 
+// =====================================================================
+// CEFR PROGRESSION
+// =====================================================================
+function detectCefrLevel() {
+  // For existing users: detect highest CEFR level they've already practiced
+  let maxIdx = 0;
+  for (const word of WORDS) {
+    const s = scores[word.en];
+    if (!s || (s.correct + s.wrong) < 1) continue;
+    const idx = CEFR_ORDER.indexOf(getWordCEFR(word));
+    if (idx > maxIdx) maxIdx = idx;
+  }
+  return maxIdx;
+}
+
+function checkLevelUp() {
+  const total = session.correct + session.wrong;
+  if (total === 0) return null;
+  const acc = session.correct / total;
+  if (acc < LEVEL_UP_THRESHOLD) return null;
+  const nextIdx = cefrProgress.unlockedLevel + 1;
+  if (nextIdx >= CEFR_ORDER.length) return null; // already at max
+  // Check there are actually words at next level
+  const nextLevel = CEFR_ORDER[nextIdx];
+  if (!WORDS.some(w => getWordCEFR(w) === nextLevel)) return null;
+  cefrProgress.unlockedLevel = nextIdx;
+  saveCefrProgress();
+  return nextLevel;
+}
+
+function renderCefrRoadmap(targetId) {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  let html = '';
+  CEFR_ORDER.forEach((level, i) => {
+    if (i > 0) html += '<span class="cefr-rm-arrow">→</span>';
+    const unlocked = i <= cefrProgress.unlockedLevel;
+    const isCurrent = i === cefrProgress.unlockedLevel;
+    const cls = isCurrent ? 'current' : unlocked ? 'active' : 'locked';
+    const icon = isCurrent ? ' ●' : unlocked ? ' ✓' : ' 🔒';
+    html += '<span class="cefr-rm-chip ' + cls + '">' + level + icon + '</span>';
+  });
+  el.innerHTML = html;
+}
+
 function showSessionSummary() {
   document.getElementById('sum-correct').textContent = session.correct;
   document.getElementById('sum-wrong').textContent = session.wrong;
   document.getElementById('sum-learned').textContent = session.learned;
+
+  const total = session.correct + session.wrong;
+  const acc = total > 0 ? Math.round(session.correct / total * 100) : 0;
+
+  // Accuracy bar
+  const fillEl = document.getElementById('sum-acc-fill');
+  const pctEl = document.getElementById('sum-acc-pct');
+  if (fillEl) {
+    const color = acc >= 75 ? '#43e97b' : acc >= 50 ? '#4facfe' : '#f5576c';
+    fillEl.style.background = color;
+    setTimeout(() => { fillEl.style.width = Math.min(100, acc) + '%'; }, 100);
+  }
+  if (pctEl) pctEl.textContent = '%' + acc;
+
+  // Check for level up
+  const leveledUpTo = checkLevelUp();
+  const levelupCard = document.getElementById('levelup-card');
   const subEl = document.getElementById('summary-sub');
-  const acc = session.correct + session.wrong > 0 ? Math.round(session.correct / (session.correct + session.wrong) * 100) : 0;
-  if (acc >= 90) subEl.textContent = '🔥 Mükemmel! Doğruluk: %' + acc;
-  else if (acc >= 70) subEl.textContent = '💪 İyi gidiyorsun. Doğruluk: %' + acc;
-  else subEl.textContent = '📚 Devam et, daha iyisini yapabilirsin. Doğruluk: %' + acc;
+
+  if (leveledUpTo) {
+    const prevLevel = CEFR_ORDER[cefrProgress.unlockedLevel - 1];
+    const unlockedGroup = CEFR_ORDER.slice(0, cefrProgress.unlockedLevel + 1).join('+');
+    document.getElementById('levelup-title').textContent = '🚀 ' + leveledUpTo + ' Seviyesi Açıldı!';
+    document.getElementById('levelup-desc').textContent =
+      'Artık ' + unlockedGroup + ' kelimeler geliyor. Harika ilerliyorsun!';
+    levelupCard.classList.add('show');
+    subEl.textContent = '🔥 %' + acc + ' doğruluk — bir üst seviyeye geçtin!';
+    confetti();
+    setTimeout(() => showAchievementToast({ icon: '📈', title: leveledUpTo + ' Açıldı!', desc: unlockedGroup + ' kelimeler artık aktif' }), 800);
+  } else {
+    if (levelupCard) levelupCard.classList.remove('show');
+    const nextIdx = cefrProgress.unlockedLevel + 1;
+    const hasNext = nextIdx < CEFR_ORDER.length;
+    if (acc >= 75) {
+      subEl.textContent = hasNext
+        ? '💪 %' + acc + ' — bir sonraki seansta ' + CEFR_ORDER[nextIdx] + ' açılabilir!'
+        : '🌟 %' + acc + ' — tüm seviyeleri tamamladın!';
+    } else if (acc >= 50) {
+      subEl.textContent = hasNext
+        ? '📚 %' + acc + ' doğruluk. ' + CEFR_ORDER[nextIdx] + ' için %75 gerekiyor.'
+        : '📚 %' + acc + ' doğruluk. Devam et!';
+    } else {
+      subEl.textContent = '📖 %' + acc + ' doğruluk. A1 kelimeleri pekiştirmeye devam et!';
+    }
+  }
+
+  renderCefrRoadmap('cefr-roadmap');
+  renderCefrRoadmap('cefr-roadmap-summary');
+
   document.getElementById('word-card').style.display = 'none';
   document.getElementById('session-summary').classList.add('show');
 }
@@ -2294,6 +2457,14 @@ async function init() {
       });
     }
   });
+
+  // Auto-detect CEFR level for existing users (first time only)
+  if (!localStorage.getItem(CEFR_PROGRESS_KEY)) {
+    cefrProgress.unlockedLevel = detectCefrLevel();
+    saveCefrProgress();
+  }
+
+  renderCefrRoadmap('cefr-roadmap');
 
   bindUI();
   updateMiniStats();
