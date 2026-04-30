@@ -1684,11 +1684,25 @@ function finalizeAnswer(isCorrect, isSkip) {
   updateMiniStats();
   checkAchievements();
 
-  // Scroll result into view after keyboard fully closes (~300ms on iOS)
-  setTimeout(() => {
+  // Scroll result into view — wait for keyboard to fully close on mobile
+  function doScroll() {
     const rb = document.getElementById('result-box');
     if (rb) rb.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, 400);
+  }
+  if (window.visualViewport) {
+    let scrolled = false;
+    const onVvResize = () => {
+      if (scrolled) return;
+      scrolled = true;
+      window.visualViewport.removeEventListener('resize', onVvResize);
+      setTimeout(doScroll, 80);
+    };
+    window.visualViewport.addEventListener('resize', onVvResize);
+    // Fallback: klavye zaten kapalıysa (Pas butonu gibi) resize olmaz
+    setTimeout(() => { if (!scrolled) { scrolled = true; window.visualViewport.removeEventListener('resize', onVvResize); doScroll(); } }, 700);
+  } else {
+    setTimeout(doScroll, 500);
+  }
 }
 
 function useHint() {
