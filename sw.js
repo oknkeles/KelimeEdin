@@ -1,4 +1,4 @@
-const CACHE = 'kelimeedin-v5';
+const CACHE = 'kelimeedin-v6';
 const ASSETS = [
   './',
   './index.html',

@@ -168,6 +168,19 @@ main { max-width: 720px; margin: 0 auto; padding: 0 14px calc(80px + var(--safe-
   color: #43e97b; margin-bottom: 4px;
 }
 .levelup-card p { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+/* --- LEVEL DOWN CARD (in session summary) --- */
+.leveldown-card {
+  display: none; margin: 12px 0 8px;
+  padding: 14px 16px; border-radius: 14px;
+  background: linear-gradient(135deg, rgba(245,87,108,0.18), rgba(235,51,73,0.06));
+  border: 1.5px solid rgba(245,87,108,0.4);
+}
+.leveldown-card.show { display: block; animation: fadePop 0.5s ease-out; }
+.leveldown-card h4 {
+  font-family: 'Fraunces', serif; font-weight: 900; font-size: 17px;
+  color: #f5576c; margin-bottom: 4px;
+}
+.leveldown-card p { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
 
 /* --- ACCURACY PROGRESS BAR (in summary) --- */
 .acc-bar-wrap { margin: 10px 0 4px; }
@@ -639,6 +652,8 @@ input.answer-input:focus { border-color: var(--accent2); background: rgba(255,25
 .cefr-a2 { background: rgba(56,239,215,0.12); color: #38f9d7; border-color: rgba(56,239,215,0.28); }
 .cefr-b1 { background: rgba(79,172,254,0.14); color: #4facfe; border-color: rgba(79,172,254,0.3); }
 .cefr-b2 { background: rgba(176,130,255,0.14); color: #b78ffc; border-color: rgba(176,130,255,0.3); }
+.cefr-c1 { background: rgba(255,165,0,0.14); color: #ffaa44; border-color: rgba(255,165,0,0.3); }
+.cefr-c2 { background: rgba(255,87,87,0.14); color: #ff6b6b; border-color: rgba(255,87,87,0.3); }
 
 /* --- OFFLINE CHIP --- */
 .offline-chip {
@@ -832,6 +847,10 @@ button:focus:not(:focus-visible) { outline: none; }
       <div class="levelup-card" id="levelup-card">
         <h4 id="levelup-title">🚀 Seviye Atlandı!</h4>
         <p id="levelup-desc">Yeni kelimeler açıldı.</p>
+      </div>
+      <div class="leveldown-card" id="leveldown-card">
+        <h4 id="leveldown-title">⬇️ Seviye Düştü</h4>
+        <p id="leveldown-desc">Önceki seviyeyi pekiştirmeye devam et.</p>
       </div>
       <div class="summary-grid">
         <div class="summary-stat"><div class="summary-stat-num" style="color:#43e97b" id="sum-correct">0</div><div class="summary-stat-label">Doğru</div></div>
@@ -1059,17 +1078,19 @@ const NOTES_KEY = "ke-notes-v1";
 const CEFR_PROGRESS_KEY = "ke-cefr-v2";
 const DAILY_GOAL = 20;
 
-const CEFR_ORDER = ['A1', 'A2', 'B1', 'B2'];
-const CEFR_COLORS = { A1: '#43e97b', A2: '#38f9d7', B1: '#4facfe', B2: '#b78ffc' };
-const LEVEL_UP_THRESHOLD = 0.75; // %75 doğruluk
+const CEFR_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+const CEFR_COLORS = { A1: '#43e97b', A2: '#38f9d7', B1: '#4facfe', B2: '#b78ffc', C1: '#ffaa44', C2: '#ff6b6b' };
+const LEVEL_UP_THRESHOLD = 0.75;   // %75 → sonraki seviyeyi aç
+const LEVEL_DOWN_THRESHOLD = 0.50; // %50 altı → önceki seviyeye geri dön
 
-// CEFR levels by category (A1-B2)
+// CEFR levels by category
 const CAT_CEFR = {
   color: "A1", body: "A1", animal: "A1", time: "A1",
   people: "A2", food: "A2", home: "A2", clothes: "A2", transport: "A2",
   nature: "A2", place: "A2",
   verb: "B1", adj: "B1", prof: "B1", misc: "B1", society: "B1",
-  abstract: "B2", extra: "B2"
+  abstract: "B2", extra: "B2",
+  academic: "C1", formal: "C2"
 };
 // Word-specific CEFR overrides for very common words
 const WORD_CEFR = {
@@ -1107,12 +1128,14 @@ const CAT_LABELS = {
   color: "🎨 Renkler", time: "⏰ Zaman", place: "📍 Yerler",
   verb: "⚡ Fiiller", adj: "✨ Sıfatlar", abstract: "💭 Soyut",
   prof: "👨‍⚕️ Meslekler", clothes: "👕 Giyim", transport: "🚗 Ulaşım",
-  society: "🏛️ Toplum", misc: "📦 Diğer", extra: "🔮 Ek"
+  society: "🏛️ Toplum", misc: "📦 Diğer", extra: "🔮 Ek",
+  academic: "🎓 Akademik", formal: "📜 Resmi"
 };
 const CAT_EMOJI = {
   people: "👥", body: "🦴", home: "🏠", food: "🍽️", nature: "🌿", animal: "🐾",
   color: "🎨", time: "⏰", place: "📍", verb: "⚡", adj: "✨", abstract: "💭",
-  prof: "👨‍⚕️", clothes: "👕", transport: "🚗", society: "🏛️", misc: "📦", extra: "🔮"
+  prof: "👨‍⚕️", clothes: "👕", transport: "🚗", society: "🏛️", misc: "📦", extra: "🔮",
+  academic: "🎓", formal: "📜"
 };
 
 const ALT_MEANINGS = {"home":[{"en":"house","tr":"ev"}],"house":[{"en":"home","tr":"ev"}],"stairs":[{"en":"ladder","tr":"merdiven"}],"ladder":[{"en":"stairs","tr":"merdiven"}],"clock":[{"en":"hour","tr":"saat"}],"hour":[{"en":"clock","tr":"saat"}],"snow":[{"en":"profit","tr":"kar"}],"profit":[{"en":"snow","tr":"kar"}],"do":[{"en":"make","tr":"yapmak"}],"make":[{"en":"do","tr":"yapmak"}],"get":[{"en":"take","tr":"almak"}],"take":[{"en":"get","tr":"almak"}],"idea":[{"en":"opinion","tr":"fikir"}],"opinion":[{"en":"idea","tr":"fikir"}],"wrong":[{"en":"false","tr":"yanlış"}],"false":[{"en":"wrong","tr":"yanlış"}],"information":[{"en":"knowledge","tr":"bilgi"}],"knowledge":[{"en":"information","tr":"bilgi"}],"alone":[{"en":"lonely","tr":"yalnız"}],"lonely":[{"en":"alone","tr":"yalnız"}],"bath":[{"en":"bathroom","tr":"banyo"}],"bathroom":[{"en":"bath","tr":"banyo"}],"client":[{"en":"customer","tr":"müşteri"}],"customer":[{"en":"client","tr":"müşteri"}],"brush":[{"tr":"fırçalamak"},{"tr":"fırça"}],"water":[{"tr":"sulamak"},{"tr":"su"}],"garden":[{"tr":"bahçe yapmak"},{"tr":"bahçe"}],"market":[{"tr":"pazar (ekonomi)"},{"tr":"pazar"}],"work":[{"tr":"iş"},{"tr":"çalışmak"}],"clean":[{"tr":"temizlemek"},{"tr":"temiz"}],"dirty":[{"tr":"kirletmek"},{"tr":"kirli"}],"dry":[{"tr":"kurutmak"},{"tr":"çamaşır"},{"tr":"kuru"}],"answer":[{"tr":"cevaplamak"},{"tr":"cevap"}],"trust":[{"tr":"güvenmek"},{"tr":"güven"}],"smile":[{"tr":"gülümsemek"},{"tr":"gülümseme"}],"iron":[{"tr":"ütülemek"},{"tr":"demir"}]};
@@ -1763,19 +1786,29 @@ function detectCefrLevel() {
   return maxIdx;
 }
 
-function checkLevelUp() {
+function checkLevelChange() {
   const total = session.correct + session.wrong;
-  if (total === 0) return null;
+  if (total === 0) return { levelUp: null, levelDown: null };
   const acc = session.correct / total;
-  if (acc < LEVEL_UP_THRESHOLD) return null;
-  const nextIdx = cefrProgress.unlockedLevel + 1;
-  if (nextIdx >= CEFR_ORDER.length) return null; // already at max
-  // Check there are actually words at next level
-  const nextLevel = CEFR_ORDER[nextIdx];
-  if (!WORDS.some(w => getWordCEFR(w) === nextLevel)) return null;
-  cefrProgress.unlockedLevel = nextIdx;
-  saveCefrProgress();
-  return nextLevel;
+
+  if (acc >= LEVEL_UP_THRESHOLD) {
+    const nextIdx = cefrProgress.unlockedLevel + 1;
+    if (nextIdx < CEFR_ORDER.length && WORDS.some(w => getWordCEFR(w) === CEFR_ORDER[nextIdx])) {
+      cefrProgress.unlockedLevel = nextIdx;
+      saveCefrProgress();
+      return { levelUp: CEFR_ORDER[nextIdx], levelDown: null };
+    }
+    return { levelUp: null, levelDown: null };
+  }
+
+  if (acc < LEVEL_DOWN_THRESHOLD && cefrProgress.unlockedLevel > 0) {
+    const lockedLevel = CEFR_ORDER[cefrProgress.unlockedLevel];
+    cefrProgress.unlockedLevel = cefrProgress.unlockedLevel - 1;
+    saveCefrProgress();
+    return { levelUp: null, levelDown: lockedLevel };
+  }
+
+  return { levelUp: null, levelDown: null };
 }
 
 function renderCefrRoadmap(targetId) {
@@ -1788,7 +1821,14 @@ function renderCefrRoadmap(targetId) {
     const isCurrent = i === cefrProgress.unlockedLevel;
     const cls = isCurrent ? 'current' : unlocked ? 'active' : 'locked';
     const icon = isCurrent ? ' ●' : unlocked ? ' ✓' : ' 🔒';
-    html += '<span class="cefr-rm-chip ' + cls + '">' + level + icon + '</span>';
+    const color = CEFR_COLORS[level] || '#8a8295';
+    let style = '';
+    if (isCurrent) {
+      style = ' style="color:' + color + ';border-color:' + color + '40;background:' + color + '18;box-shadow:0 0 10px ' + color + '30"';
+    } else if (unlocked) {
+      style = ' style="color:' + color + ';border-color:' + color + '38;background:' + color + '12"';
+    }
+    html += '<span class="cefr-rm-chip ' + cls + '"' + style + '>' + level + icon + '</span>';
   });
   el.innerHTML = html;
 }
@@ -1811,23 +1851,33 @@ function showSessionSummary() {
   }
   if (pctEl) pctEl.textContent = '%' + acc;
 
-  // Check for level up
-  const leveledUpTo = checkLevelUp();
+  // Check for level change (up or down)
+  const { levelUp, levelDown } = checkLevelChange();
   const levelupCard = document.getElementById('levelup-card');
+  const leveldownCard = document.getElementById('leveldown-card');
   const subEl = document.getElementById('summary-sub');
 
-  if (leveledUpTo) {
-    const prevLevel = CEFR_ORDER[cefrProgress.unlockedLevel - 1];
+  if (levelupCard) levelupCard.classList.remove('show');
+  if (leveldownCard) leveldownCard.classList.remove('show');
+
+  if (levelUp) {
     const unlockedGroup = CEFR_ORDER.slice(0, cefrProgress.unlockedLevel + 1).join('+');
-    document.getElementById('levelup-title').textContent = '🚀 ' + leveledUpTo + ' Seviyesi Açıldı!';
+    document.getElementById('levelup-title').textContent = '🚀 ' + levelUp + ' Seviyesi Açıldı!';
     document.getElementById('levelup-desc').textContent =
       'Artık ' + unlockedGroup + ' kelimeler geliyor. Harika ilerliyorsun!';
     levelupCard.classList.add('show');
     subEl.textContent = '🔥 %' + acc + ' doğruluk — bir üst seviyeye geçtin!';
     confetti();
-    setTimeout(() => showAchievementToast({ icon: '📈', title: leveledUpTo + ' Açıldı!', desc: unlockedGroup + ' kelimeler artık aktif' }), 800);
+    setTimeout(() => showAchievementToast({ icon: '📈', title: levelUp + ' Açıldı!', desc: unlockedGroup + ' kelimeler artık aktif' }), 800);
+  } else if (levelDown) {
+    const currentLevel = CEFR_ORDER[cefrProgress.unlockedLevel];
+    document.getElementById('leveldown-title').textContent = '⬇️ ' + levelDown + ' Seviyesi Kilitledi';
+    document.getElementById('leveldown-desc').textContent =
+      '%50\'nin altında başarı. ' + currentLevel + ' kelimelerini pekiştir, sonra tekrar dene!';
+    leveldownCard.classList.add('show');
+    subEl.textContent = '📖 %' + acc + ' doğruluk — ' + currentLevel + ' seviyesine odaklan.';
+    vibrate([80, 40, 80]);
   } else {
-    if (levelupCard) levelupCard.classList.remove('show');
     const nextIdx = cefrProgress.unlockedLevel + 1;
     const hasNext = nextIdx < CEFR_ORDER.length;
     if (acc >= 75) {
@@ -1839,7 +1889,8 @@ function showSessionSummary() {
         ? '📚 %' + acc + ' doğruluk. ' + CEFR_ORDER[nextIdx] + ' için %75 gerekiyor.'
         : '📚 %' + acc + ' doğruluk. Devam et!';
     } else {
-      subEl.textContent = '📖 %' + acc + ' doğruluk. A1 kelimeleri pekiştirmeye devam et!';
+      const curLevel = CEFR_ORDER[cefrProgress.unlockedLevel];
+      subEl.textContent = '📖 %' + acc + ' doğruluk. ' + curLevel + ' kelimelerini pekiştirmeye devam et!';
     }
   }
 
