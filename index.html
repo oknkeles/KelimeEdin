@@ -241,6 +241,14 @@ main { max-width: 720px; margin: 0 auto; padding: 0 14px calc(80px + var(--safe-
   min-height: 18px;
 }
 .ipa.empty { opacity: 0; }
+.word-history {
+  display: flex; align-items: center; gap: 3px; flex-wrap: wrap;
+  min-height: 16px; margin-bottom: 4px;
+}
+.wh-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.wh-dot.ok { background: rgba(67,233,123,0.75); }
+.wh-dot.err { background: rgba(245,87,108,0.75); }
+.wh-label { font-size: 11px; color: var(--text-muted); margin-left: 4px; letter-spacing: 0.3px; }
 .speak-btn {
   background: rgba(255,255,255,0.06); border: 1px solid var(--card-border);
   color: var(--text); width: 40px; height: 40px;
@@ -341,7 +349,7 @@ input.answer-input:focus { border-color: var(--accent2); background: rgba(255,25
 .result-box.learned .alt-label { color: #8b5e00; }
 
 .examples-box {
-  margin-top: 12px; padding: 14px 14px 10px;
+  margin-top: 10px; padding: 10px 12px 8px;
   border-radius: 14px;
   background: linear-gradient(135deg, rgba(102,126,234,0.10), rgba(118,75,162,0.04));
   border: 1px solid rgba(102,126,234,0.16);
@@ -351,15 +359,15 @@ input.answer-input:focus { border-color: var(--accent2); background: rgba(255,25
 .examples-title {
   font-size: 10px; font-weight: 700;
   letter-spacing: 1.2px; text-transform: uppercase;
-  color: #a89bff; margin-bottom: 10px;
+  color: #a89bff; margin-bottom: 7px;
   display: flex; align-items: center; gap: 6px;
 }
-.examples-title::before { content: '📖'; font-size: 13px; }
-.example-item { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.examples-title::before { content: '📖'; font-size: 12px; }
+.example-item { padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
 .example-item:last-child { border-bottom: 0; padding-bottom: 0; }
 .example-en {
-  font-size: 14px; color: var(--text); font-weight: 500;
-  display: flex; align-items: flex-start; gap: 6px; line-height: 1.4;
+  font-size: 13px; color: var(--text); font-weight: 500;
+  display: flex; align-items: flex-start; gap: 5px; line-height: 1.35;
 }
 .example-en .ex-speak {
   background: transparent; border: none; color: var(--accent2);
@@ -368,8 +376,8 @@ input.answer-input:focus { border-color: var(--accent2); background: rgba(255,25
   transition: opacity 0.2s; margin-top: 1px;
 }
 .example-en .ex-speak:active { opacity: 1; }
-.example-en .ex-speak svg { width: 13px; height: 13px; display: block; }
-.example-tr { font-size: 13px; color: var(--text-dim); margin-top: 3px; padding-left: 19px; font-style: italic; line-height: 1.4; }
+.example-en .ex-speak svg { width: 12px; height: 12px; display: block; }
+.example-tr { font-size: 12px; color: var(--text-dim); margin-top: 2px; padding-left: 17px; font-style: italic; line-height: 1.35; }
 
 .next-btn {
   width: 100%; padding: 14px;
@@ -881,6 +889,7 @@ button:focus:not(:focus-visible) { outline: none; }
         </button>
       </div>
       <div class="ipa empty" id="ipa-display"></div>
+      <div class="word-history" id="word-history"></div>
       <input type="text" class="answer-input" id="answer-input"
         placeholder="Cevabını yaz..." autocomplete="off"
         autocapitalize="off" spellcheck="false">
@@ -1513,6 +1522,26 @@ function showWord() {
     ipa.textContent = '';
   }
 
+  // Word history mini-visual
+  const histEl = document.getElementById('word-history');
+  const sc = getScore(current.en);
+  const totalHist = sc.correct + sc.wrong;
+  histEl.innerHTML = '';
+  if (totalHist > 0) {
+    const maxDots = Math.min(totalHist, 12);
+    const okDots = Math.round((sc.correct / totalHist) * maxDots);
+    const errDots = maxDots - okDots;
+    for (let i = 0; i < okDots; i++) { const d = document.createElement('span'); d.className = 'wh-dot ok'; histEl.appendChild(d); }
+    for (let i = 0; i < errDots; i++) { const d = document.createElement('span'); d.className = 'wh-dot err'; histEl.appendChild(d); }
+    const lbl = document.createElement('span');
+    lbl.className = 'wh-label';
+    lbl.textContent = sc.correct + '✓ ' + sc.wrong + '✗';
+    histEl.appendChild(lbl);
+  }
+
+  // Restore cat emoji (may have been hidden after previous answer)
+  document.getElementById('cat-emoji').style.display = '';
+
   const input = document.getElementById('answer-input');
   input.value = '';
   input.disabled = false;
@@ -1573,6 +1602,8 @@ function finalizeAnswer(isCorrect, isSkip) {
   const input = document.getElementById('answer-input');
   input.disabled = true;
   input.blur(); // klavyeyi kapat, viewport stabilize olsun
+  document.getElementById('cat-emoji').style.display = 'none';
+  document.getElementById('word-history').innerHTML = '';
   document.getElementById('check-btn').style.display = 'none';
   document.getElementById('hint-btn').style.display = 'none';
   document.getElementById('skip-btn').style.display = 'none';
