@@ -1089,8 +1089,10 @@ const DAILY_GOAL = 20;
 
 const CEFR_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 const CEFR_COLORS = { A1: '#43e97b', A2: '#38f9d7', B1: '#4facfe', B2: '#b78ffc', C1: '#ffaa44', C2: '#ff6b6b' };
-const LEVEL_UP_THRESHOLD = 0.75;   // %75 → sonraki seviyeyi aç
+const LEVEL_UP_THRESHOLD = 0.80;   // %80 → sonraki seviyeyi aç
 const LEVEL_DOWN_THRESHOLD = 0.50; // %50 altı → önceki seviyeye geri dön
+// CEFR level weight multipliers: index 0 = current level, 1 = one below, etc.
+const CEFR_LEVEL_WEIGHTS = [5, 2, 0.7, 0.2, 0.06, 0.02];
 
 // CEFR levels by category
 const CAT_CEFR = {
@@ -1359,6 +1361,10 @@ function pickNext() {
     let weight = wrongWeight + bucketWeight * 2 - correctPenalty - recencyPenalty;
     if (s.struggleConquered) weight *= 0.15;
     if (weight < 0.5) weight = 0.5;
+    // Apply CEFR level multiplier: current level gets max weight, lower levels get progressively less
+    const levelIdx = CEFR_ORDER.indexOf(getWordCEFR(w));
+    const levelDiff = cefrProgress.unlockedLevel - levelIdx;
+    weight *= CEFR_LEVEL_WEIGHTS[Math.min(levelDiff, CEFR_LEVEL_WEIGHTS.length - 1)];
     weight *= (0.7 + Math.random() * 0.6);
     return { word: w, weight };
   });
@@ -1911,13 +1917,13 @@ function showSessionSummary() {
   } else {
     const nextIdx = cefrProgress.unlockedLevel + 1;
     const hasNext = nextIdx < CEFR_ORDER.length;
-    if (acc >= 75) {
+    if (acc >= 80) {
       subEl.textContent = hasNext
         ? '💪 %' + acc + ' — bir sonraki seansta ' + CEFR_ORDER[nextIdx] + ' açılabilir!'
         : '🌟 %' + acc + ' — tüm seviyeleri tamamladın!';
     } else if (acc >= 50) {
       subEl.textContent = hasNext
-        ? '📚 %' + acc + ' doğruluk. ' + CEFR_ORDER[nextIdx] + ' için %75 gerekiyor.'
+        ? '📚 %' + acc + ' doğruluk. ' + CEFR_ORDER[nextIdx] + ' için %80 gerekiyor.'
         : '📚 %' + acc + ' doğruluk. Devam et!';
     } else {
       const curLevel = CEFR_ORDER[cefrProgress.unlockedLevel];
