@@ -1569,6 +1569,48 @@ function normalize(s) {
   return s.toLowerCase().trim().replace(/[.,!?;:'"]/g, '').replace(/\s+/g, ' ');
 }
 
+function levenshtein(a, b) {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  let prev = [];
+  for (let j = 0; j <= b.length; j++) prev[j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[b.length];
+}
+
+// Forgiving equality: handles Turkish -mek/-mak infinitive and small typos
+function fuzzyEqual(user, expected, lang) {
+  if (user === expected) return true;
+  if (user.length < 2 || expected.length < 2) return false;
+
+  // Turkish verb infinitive: accept root form ("gel" for "gelmek")
+  if (lang === 'tr') {
+    if (expected.length >= 5 && (expected.endsWith('mek') || expected.endsWith('mak'))) {
+      if (user === expected.slice(0, -3)) return true;
+    }
+    if (user.length >= 5 && (user.endsWith('mek') || user.endsWith('mak'))) {
+      if (expected === user.slice(0, -3)) return true;
+    }
+  }
+
+  // Typo tolerance: 1 edit for 5+ char words, 2 edits for 10+ char words
+  const len = Math.max(user.length, expected.length);
+  let allowed = 0;
+  if (len >= 5) allowed = 1;
+  if (len >= 10) allowed = 2;
+  if (allowed > 0 && Math.abs(user.length - expected.length) <= allowed) {
+    if (levenshtein(user, expected) <= allowed) return true;
+  }
+  return false;
+}
+
 function checkAnswer() {
   if (answered) return;
   const input = document.getElementById('answer-input');
@@ -1576,23 +1618,25 @@ function checkAnswer() {
   if (!userAnswer) return;
 
   const expected = currentDir === "en2tr" ? current.tr : current.en;
+  const lang = currentDir === "en2tr" ? "tr" : "en";
   const expectedNorm = normalize(expected);
   const alternates = expected.split(/[\/,]/).map(s => normalize(s));
-  let isCorrect = alternates.includes(userAnswer) || expectedNorm === userAnswer;
+  let isCorrect = fuzzyEqual(userAnswer, expectedNorm, lang) ||
+    alternates.some(alt => fuzzyEqual(userAnswer, alt, lang));
 
   if (!isCorrect) {
     const alts = ALT_MEANINGS[current.en.toLowerCase()] || [];
     if (currentDir === "en2tr") {
       for (const a of alts) {
-        if (a.tr && normalize(a.tr) === userAnswer) { isCorrect = true; break; }
+        if (a.tr && fuzzyEqual(userAnswer, normalize(a.tr), 'tr')) { isCorrect = true; break; }
         if (a.tr && a.tr.includes('/')) {
-          for (const part of a.tr.split('/')) if (normalize(part) === userAnswer) { isCorrect = true; break; }
+          for (const part of a.tr.split('/')) if (fuzzyEqual(userAnswer, normalize(part), 'tr')) { isCorrect = true; break; }
         }
       }
     } else {
       const trNorm = current.tr.toLowerCase().trim();
       const validEns = TR_TO_EN[trNorm] || [];
-      if (validEns.includes(userAnswer)) isCorrect = true;
+      if (validEns.some(en => fuzzyEqual(userAnswer, en, 'en'))) isCorrect = true;
     }
   }
   finalizeAnswer(isCorrect, false);
