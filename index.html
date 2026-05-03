@@ -1569,23 +1569,8 @@ function normalize(s) {
   return s.toLowerCase().trim().replace(/[.,!?;:'"]/g, '').replace(/\s+/g, ' ');
 }
 
-function levenshtein(a, b) {
-  if (a === b) return 0;
-  if (!a.length) return b.length;
-  if (!b.length) return a.length;
-  let prev = [];
-  for (let j = 0; j <= b.length; j++) prev[j] = j;
-  for (let i = 1; i <= a.length; i++) {
-    const cur = [i];
-    for (let j = 1; j <= b.length; j++) {
-      cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + (a[i-1] === b[j-1] ? 0 : 1));
-    }
-    prev = cur;
-  }
-  return prev[b.length];
-}
-
-// Forgiving equality: handles Turkish -mek/-mak infinitive and small typos
+// Forgiving equality: handles Turkish -mek/-mak infinitive and small SUFFIX-only differences
+// Mid-word or leading typos are NOT accepted (e.g. "merhabba" ≠ "merhaba")
 function fuzzyEqual(user, expected, lang) {
   if (user === expected) return true;
   if (user.length < 2 || expected.length < 2) return false;
@@ -1600,13 +1585,19 @@ function fuzzyEqual(user, expected, lang) {
     }
   }
 
-  // Typo tolerance: 1 edit for 5+ char words, 2 edits for 10+ char words
-  const len = Math.max(user.length, expected.length);
+  // Suffix-only tolerance: differences must be at the END of the word.
+  // Require common prefix ≥4 chars; trailing diff on each side ≤ allowed.
+  let commonLen = 0;
+  const minLen = Math.min(user.length, expected.length);
+  while (commonLen < minLen && user[commonLen] === expected[commonLen]) commonLen++;
+  const userRem = user.length - commonLen;
+  const expRem = expected.length - commonLen;
+  const totalLen = Math.max(user.length, expected.length);
   let allowed = 0;
-  if (len >= 5) allowed = 1;
-  if (len >= 10) allowed = 2;
-  if (allowed > 0 && Math.abs(user.length - expected.length) <= allowed) {
-    if (levenshtein(user, expected) <= allowed) return true;
+  if (totalLen >= 5) allowed = 1;
+  if (totalLen >= 10) allowed = 2;
+  if (allowed > 0 && commonLen >= 4 && userRem <= allowed && expRem <= allowed) {
+    return true;
   }
   return false;
 }
