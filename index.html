@@ -472,6 +472,24 @@ input.answer-input:focus { border-color: var(--accent2); background: rgba(255,25
 .empty-state .emoji { font-size: 42px; margin-bottom: 10px; }
 .empty-state p { font-size: 13px; line-height: 1.5; }
 
+.vocab-tabs {
+  display: flex; gap: 6px; margin-bottom: 12px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.vocab-tabs::-webkit-scrollbar { display: none; }
+.vocab-tab {
+  padding: 8px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;
+  border: 1px solid var(--card-border); background: var(--card);
+  color: var(--text-dim); cursor: pointer; font-family: inherit;
+  white-space: nowrap; transition: all 0.2s; flex-shrink: 0;
+}
+.vocab-tab.active.learned { background: var(--gradient-gold); color: #1a0e2a; border-color: transparent; box-shadow: 0 3px 12px rgba(255,140,0,0.3); }
+.vocab-tab.active.strong  { background: var(--gradient3); color: #0a3020; border-color: transparent; box-shadow: 0 3px 12px rgba(67,233,123,0.3); }
+.vocab-tab.active.weak    { background: var(--gradient1); color: white; border-color: transparent; box-shadow: 0 3px 12px rgba(245,87,108,0.3); }
+.lw-acc { font-size: 10px; font-weight: 700; letter-spacing: 0.3px; padding: 2px 7px; border-radius: 10px; }
+.lw-acc.ok  { background: rgba(67,233,123,0.15); color: #43e97b; }
+.lw-acc.bad { background: rgba(245,87,108,0.15); color: #f5576c; }
+
 .install-tip {
   margin-top: 16px; padding: 12px;
   background: linear-gradient(135deg, rgba(79,172,254,0.10), rgba(0,242,254,0.04));
@@ -925,11 +943,12 @@ button:focus:not(:focus-visible) { outline: none; }
     </div>
   </div>
   <div id="page-learned" class="page">
-    <div class="learned-banner">
-      <h3>⭐ Öğrenilen Kelimeler</h3>
-      <p>Tekrar tekrar gördüğün ve öğrendiğin kelimeler burada.</p>
+    <div class="vocab-tabs">
+      <button class="vocab-tab active learned" id="vtab-learned" onclick="switchVocabTab('learned')">⭐ Öğrenilenler</button>
+      <button class="vocab-tab strong" id="vtab-strong" onclick="switchVocabTab('strong')">💪 Güçlü Kelimelerim</button>
+      <button class="vocab-tab weak" id="vtab-weak" onclick="switchVocabTab('weak')">🎯 Zorlanıyorum</button>
     </div>
-    <input type="search" class="search-bar" id="learned-search" placeholder="Kelime ara..." autocomplete="off" aria-label="Öğrenilen kelimeler arasında ara">
+    <input type="search" class="search-bar" id="learned-search" placeholder="Kelime ara..." autocomplete="off" aria-label="Kelimeler arasında ara">
     <div id="learned-content"></div>
   </div>
   <div id="page-stats" class="page">
@@ -2090,10 +2109,70 @@ function renderEstimate() {
   el.style.display = 'block';
 }
 
+let currentVocabTab = 'learned';
+function switchVocabTab(tab) {
+  currentVocabTab = tab;
+  document.querySelectorAll('.vocab-tab').forEach(el => el.classList.remove('active'));
+  const btn = document.getElementById('vtab-' + tab);
+  if (btn) btn.classList.add('active');
+  const searchEl = document.getElementById('learned-search');
+  if (searchEl) searchEl.value = '';
+  renderLearned();
+}
+
+function makeCefrBadge(w) {
+  const cefr = getWordCEFR(w);
+  return cefr ? '<span class="cefr-badge cefr-' + cefr.toLowerCase() + '" style="font-size:9px;padding:2px 6px;margin-left:4px;vertical-align:middle">' + cefr + '</span>' : '';
+}
+
 function renderLearned() {
   const container = document.getElementById('learned-content');
-  const struggle = [];
-  const easy = [];
+
+  if (currentVocabTab === 'strong' || currentVocabTab === 'weak') {
+    const strong = [], weak = [];
+    WORDS.forEach(w => {
+      const s = scores[w.en];
+      if (!s || s.struggleConquered) return; // skip learned words
+      const total = (s.correct || 0) + (s.wrong || 0);
+      if (total < 1) return; // never seen
+      const acc = (s.correct || 0) / total;
+      if (acc >= 0.75) strong.push({ w, s, acc });
+      else weak.push({ w, s, acc });
+    });
+    strong.sort((a, b) => b.acc - a.acc);
+    weak.sort((a, b) => a.acc - b.acc); // worst first
+
+    if (currentVocabTab === 'strong') {
+      if (strong.length === 0) {
+        container.innerHTML = '<div class="empty-state"><span class="emoji">💪</span><h3>Henüz güçlü kelimen yok</h3><p>%75 ve üzeri doğrulukla bildiğin kelimeler burada çıkacak.</p></div>';
+        return;
+      }
+      let html = '<div class="learned-section"><div class="learned-section-title">💪 Güçlü Kelimelerim <span class="badge" style="background:rgba(67,233,123,0.15);color:#43e97b">' + strong.length + '</span></div>';
+      strong.forEach(({ w, s, acc }) => {
+        const pct = Math.round(acc * 100);
+        const total = s.correct + s.wrong;
+        html += '<div class="learned-word" data-word="' + escape(w.en) + '" style="cursor:pointer;border-color:rgba(67,233,123,0.2)" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + makeCefrBadge(w) + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><span class="lw-acc ok">%' + pct + '</span><span class="lw-meta">' + s.correct + '✓ ' + s.wrong + '✗</span></div></div>';
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    } else {
+      if (weak.length === 0) {
+        container.innerHTML = '<div class="empty-state"><span class="emoji">🎯</span><h3>Zorlandığın kelime yok</h3><p>%75 altı doğrulukla yanıtladığın kelimeler burada görünür.</p></div>';
+        return;
+      }
+      let html = '<div class="learned-section"><div class="learned-section-title">🎯 Zorlanıyorum <span class="badge" style="background:rgba(245,87,108,0.15);color:#f5576c">' + weak.length + '</span></div>';
+      weak.forEach(({ w, s, acc }) => {
+        const pct = Math.round(acc * 100);
+        html += '<div class="learned-word" data-word="' + escape(w.en) + '" style="cursor:pointer;border-color:rgba(245,87,108,0.2)" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + makeCefrBadge(w) + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><span class="lw-acc bad">%' + pct + '</span><span class="lw-meta">' + s.correct + '✓ ' + s.wrong + '✗</span></div></div>';
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    }
+    return;
+  }
+
+  // --- Default: Öğrenilenler tab ---
+  const struggle = [], easy = [];
   WORDS.forEach(w => {
     const s = scores[w.en];
     if (!s || !s.struggleConquered) return;
@@ -2110,9 +2189,7 @@ function renderLearned() {
     recentLearned.slice(0, 10).forEach(w => {
       const ago = formatAgo(Date.now() - w.ts);
       const wObj = WORDS.find(x => x.en === w.en);
-      const cefr = wObj ? getWordCEFR(wObj) : '';
-      const cefrHtml = cefr ? '<span class="cefr-badge cefr-' + cefr.toLowerCase() + '" style="font-size:9px;padding:2px 6px;margin-left:4px;vertical-align:middle">' + cefr + '</span>' : '';
-      html += '<div class="learned-word recent" data-word="' + escape(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + cefrHtml + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div class="lw-meta">' + ago + ' ›</div></div>';
+      html += '<div class="learned-word recent" data-word="' + escape(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + (wObj ? makeCefrBadge(wObj) : '') + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div class="lw-meta">' + ago + ' ›</div></div>';
     });
     html += '</div>';
   }
@@ -2121,9 +2198,7 @@ function renderLearned() {
     struggle.forEach(w => {
       const s = scores[w.en];
       const leechMark = isLeech(w.en) ? '<span class="leech-badge">🐛</span>' : '';
-      const cefr = getWordCEFR(w);
-      const cefrHtml = cefr ? '<span class="cefr-badge cefr-' + cefr.toLowerCase() + '" style="font-size:9px;padding:2px 6px;margin-left:4px;vertical-align:middle">' + cefr + '</span>' : '';
-      html += '<div class="learned-word struggle" data-word="' + escape(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + cefrHtml + leechMark + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div class="lw-meta gold">' + s.correct + ' ✓ • ' + s.wrong + ' ✗ ›</div></div>';
+      html += '<div class="learned-word struggle" data-word="' + escape(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + makeCefrBadge(w) + leechMark + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div class="lw-meta gold">' + s.correct + ' ✓ • ' + s.wrong + ' ✗ ›</div></div>';
     });
     html += '</div>';
   }
@@ -2131,9 +2206,7 @@ function renderLearned() {
     html += '<div class="learned-section"><div class="learned-section-title">✨ Hızlıca Öğrendin <span class="badge">' + easy.length + '</span></div>';
     easy.forEach(w => {
       const s = scores[w.en];
-      const cefr = getWordCEFR(w);
-      const cefrHtml = cefr ? '<span class="cefr-badge cefr-' + cefr.toLowerCase() + '" style="font-size:9px;padding:2px 6px;margin-left:4px;vertical-align:middle">' + cefr + '</span>' : '';
-      html += '<div class="learned-word" data-word="' + escape(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + cefrHtml + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div class="lw-meta">' + s.correct + ' ✓ ›</div></div>';
+      html += '<div class="learned-word" data-word="' + escape(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + makeCefrBadge(w) + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div class="lw-meta">' + s.correct + ' ✓ ›</div></div>';
     });
     html += '</div>';
   }
