@@ -1115,7 +1115,7 @@ const WORD_CEFR = {
   "freedom":"B2","democracy":"B2","consciousness":"B2","responsibility":"B2","opportunity":"B1"
 };
 function getWordCEFR(word) {
-  return WORD_CEFR[word.en.toLowerCase()] || CAT_CEFR[word.cat] || "B1";
+  return word.cefr || WORD_CEFR[word.en.toLowerCase()] || CAT_CEFR[word.cat] || "B1";
 }
 
 const ACHIEVEMENTS = [
