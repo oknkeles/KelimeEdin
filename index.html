@@ -2133,37 +2133,38 @@ function renderLearned() {
     WORDS.forEach(w => {
       const s = scores[w.en];
       if (!s || s.struggleConquered) return; // skip learned words
-      const total = (s.correct || 0) + (s.wrong || 0);
-      if (total < 1) return; // never seen
-      const acc = (s.correct || 0) / total;
-      if (acc >= 0.75) strong.push({ w, s, acc });
-      else weak.push({ w, s, acc });
+      const wrongCount = s.wrong || 0;
+      const correctCount = s.correct || 0;
+      if (wrongCount >= 1) {
+        // Ever gotten wrong → Zorlanıyorum
+        weak.push({ w, s });
+      } else if (correctCount >= 2) {
+        // Never wrong, seen multiple times → Güçlü
+        strong.push({ w, s });
+      }
     });
-    strong.sort((a, b) => b.acc - a.acc);
-    weak.sort((a, b) => a.acc - b.acc); // worst first
+    strong.sort((a, b) => (b.s.correct || 0) - (a.s.correct || 0));
+    weak.sort((a, b) => (b.s.wrong || 0) - (a.s.wrong || 0)); // most problematic first
 
     if (currentVocabTab === 'strong') {
       if (strong.length === 0) {
-        container.innerHTML = '<div class="empty-state"><span class="emoji">💪</span><h3>Henüz güçlü kelimen yok</h3><p>%75 ve üzeri doğrulukla bildiğin kelimeler burada çıkacak.</p></div>';
+        container.innerHTML = '<div class="empty-state"><span class="emoji">💪</span><h3>Henüz güçlü kelimen yok</h3><p>Hiç yanlış yapmadan en az 2 kez doğru bildiğin kelimeler burada çıkacak.</p></div>';
         return;
       }
       let html = '<div class="learned-section"><div class="learned-section-title">💪 Güçlü Kelimelerim <span class="badge" style="background:rgba(67,233,123,0.15);color:#43e97b">' + strong.length + '</span></div>';
-      strong.forEach(({ w, s, acc }) => {
-        const pct = Math.round(acc * 100);
-        const total = s.correct + s.wrong;
-        html += '<div class="learned-word" data-word="' + escape(w.en) + '" style="cursor:pointer;border-color:rgba(67,233,123,0.2)" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + makeCefrBadge(w) + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><span class="lw-acc ok">%' + pct + '</span><span class="lw-meta">' + s.correct + '✓ ' + s.wrong + '✗</span></div></div>';
+      strong.forEach(({ w, s }) => {
+        html += '<div class="learned-word" data-word="' + escape(w.en) + '" style="cursor:pointer;border-color:rgba(67,233,123,0.2)" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + makeCefrBadge(w) + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><span class="lw-acc ok">' + s.correct + '✓</span><span class="lw-meta">0✗</span></div></div>';
       });
       html += '</div>';
       container.innerHTML = html;
     } else {
       if (weak.length === 0) {
-        container.innerHTML = '<div class="empty-state"><span class="emoji">🎯</span><h3>Zorlandığın kelime yok</h3><p>%75 altı doğrulukla yanıtladığın kelimeler burada görünür.</p></div>';
+        container.innerHTML = '<div class="empty-state"><span class="emoji">🎯</span><h3>Zorlandığın kelime yok</h3><p>En az bir kez yanlış yaptığın kelimeler burada görünür.</p></div>';
         return;
       }
       let html = '<div class="learned-section"><div class="learned-section-title">🎯 Zorlanıyorum <span class="badge" style="background:rgba(245,87,108,0.15);color:#f5576c">' + weak.length + '</span></div>';
-      weak.forEach(({ w, s, acc }) => {
-        const pct = Math.round(acc * 100);
-        html += '<div class="learned-word" data-word="' + escape(w.en) + '" style="cursor:pointer;border-color:rgba(245,87,108,0.2)" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + makeCefrBadge(w) + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><span class="lw-acc bad">%' + pct + '</span><span class="lw-meta">' + s.correct + '✓ ' + s.wrong + '✗</span></div></div>';
+      weak.forEach(({ w, s }) => {
+        html += '<div class="learned-word" data-word="' + escape(w.en) + '" style="cursor:pointer;border-color:rgba(245,87,108,0.2)" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + makeCefrBadge(w) + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><span class="lw-acc bad">' + (s.wrong || 0) + '✗</span><span class="lw-meta">' + (s.correct || 0) + '✓</span></div></div>';
       });
       html += '</div>';
       container.innerHTML = html;
