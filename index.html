@@ -1092,7 +1092,7 @@ const CEFR_COLORS = { A1: '#43e97b', A2: '#38f9d7', B1: '#4facfe', B2: '#b78ffc'
 const LEVEL_UP_THRESHOLD = 0.80;   // %80 → sonraki seviyeyi aç
 const LEVEL_DOWN_THRESHOLD = 0.50; // %50 altı → önceki seviyeye geri dön
 // CEFR level weight multipliers: index 0 = current level, 1 = one below, etc.
-const CEFR_LEVEL_WEIGHTS = [5, 2, 0.7, 0.2, 0.06, 0.02];
+const CEFR_LEVEL_WEIGHTS = [10, 2.5, 0.5, 0.08, 0.015, 0.003];
 
 // CEFR levels by category
 const CAT_CEFR = {
@@ -1342,16 +1342,6 @@ function pickNext() {
   if (pool.length === 0) pool = WORDS.filter(w => unlockedLevels.includes(getWordCEFR(w)));
   if (pool.length === 0) pool = WORDS;
 
-  // Prefer due (review-time) words first
-  const due = pool.filter(w => {
-    const s = scores[w.en];
-    return s && s.dueAt && s.dueAt <= now && !s.struggleConquered;
-  });
-  // 70% chance to pick from due if available
-  if (due.length > 0 && Math.random() < 0.7) {
-    return due[Math.floor(Math.random() * due.length)];
-  }
-
   const candidates = pool.map(w => {
     const s = getScore(w.en);
     const wrongWeight = (s.wrong + 1) * 4;
@@ -1361,6 +1351,8 @@ function pickNext() {
     let weight = wrongWeight + bucketWeight * 2 - correctPenalty - recencyPenalty;
     if (s.struggleConquered) weight *= 0.15;
     if (weight < 0.5) weight = 0.5;
+    // Due-for-review boost (replaces the old random-due bypass)
+    if (s.dueAt && s.dueAt <= now && !s.struggleConquered) weight *= 4;
     // Apply CEFR level multiplier: current level gets max weight, lower levels get progressively less
     const levelIdx = CEFR_ORDER.indexOf(getWordCEFR(w));
     const levelDiff = cefrProgress.unlockedLevel - levelIdx;
