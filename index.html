@@ -237,7 +237,7 @@ main { max-width: 720px; margin: 0 auto; padding: 0 14px calc(80px + var(--safe-
 }
 .ipa {
   font-size: 13px; color: var(--text-dim); margin-bottom: 12px;
-  font-family: 'DM Sans', sans-serif; letter-spacing: 0.3px;
+  font-style: italic; letter-spacing: 0.2px;
   min-height: 18px;
 }
 .ipa.empty { opacity: 0; }
@@ -1021,10 +1021,6 @@ button:focus:not(:focus-visible) { outline: none; }
         <div class="toggle on" id="hint-toggle"></div>
       </div>
       <div class="toggle-row">
-        <span>Telaffuz (IPA) göster</span>
-        <div class="toggle on" id="ipa-toggle"></div>
-      </div>
-      <div class="toggle-row">
         <span>Ses tanıma (mikrofon)</span>
         <div class="toggle" id="voice-toggle"></div>
       </div>
@@ -1098,7 +1094,6 @@ const STORE_KEY_OLD = "ke-scores-v3";
 const GLOBAL_KEY = "ke-global-v3";
 const STREAK_KEY = "ke-streak-v1";
 const SETTINGS_KEY = "ke-settings-v1";
-const IPA_KEY = "ke-ipa-v1";
 const RECENT_LEARNED_KEY = "ke-recent-v1";
 const ACTIVITY_KEY = "ke-activity-v1";
 const ACH_KEY = "ke-achievements-v1";
@@ -1178,8 +1173,8 @@ let TR_TO_EN = {};
 let scores = {};
 let global = { correct: 0, wrong: 0, learned: 0 };
 let streak = { current: 0, lastDay: null };
-let settings = { sessionLen: 20, hintEnabled: true, ipaEnabled: true, voiceEnabled: false, notifEnabled: false, catFilter: [] };
-let ipaCache = {};
+let settings = { sessionLen: 20, hintEnabled: true, voiceEnabled: false, notifEnabled: false, catFilter: [] };
+
 let recentLearned = []; // [{en, tr, ts}, ...] last 30
 let activity = {}; // { "2024-01-15": { correct: 5, wrong: 2, learned: 1 } }
 let retryQueue = []; // words to retry this session [{word, showAfter}]
@@ -1247,8 +1242,6 @@ function loadAll() {
     if (st) streak = JSON.parse(st);
     const se = localStorage.getItem(SETTINGS_KEY);
     if (se) settings = { ...settings, ...JSON.parse(se) };
-    const ip = localStorage.getItem(IPA_KEY);
-    if (ip) ipaCache = JSON.parse(ip);
     const rl = localStorage.getItem(RECENT_LEARNED_KEY);
     if (rl) recentLearned = JSON.parse(rl);
     const ac = localStorage.getItem(ACTIVITY_KEY);
@@ -1292,9 +1285,6 @@ function trackActivity(isCorrect, isLearned) {
 }
 function saveSettings() {
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch(e) {}
-}
-function saveIpa() {
-  try { localStorage.setItem(IPA_KEY, JSON.stringify(ipaCache)); } catch(e) {}
 }
 
 // =====================================================================
@@ -1422,30 +1412,6 @@ function vibrate(pattern) {
   if (navigator.vibrate) try { navigator.vibrate(pattern); } catch(e) {}
 }
 
-// =====================================================================
-// IPA (dictionaryapi.dev with cache)
-// =====================================================================
-async function fetchIpa(word) {
-  if (ipaCache[word]) return ipaCache[word];
-  try {
-    const r = await fetch('https://api.dictionaryapi.dev/api/v2/entries/en/' + encodeURIComponent(word));
-    if (!r.ok) { ipaCache[word] = ''; saveIpa(); return ''; }
-    const j = await r.json();
-    let phon = '';
-    if (Array.isArray(j) && j[0]) {
-      if (j[0].phonetic) phon = j[0].phonetic;
-      else if (j[0].phonetics && j[0].phonetics.length) {
-        const p = j[0].phonetics.find(x => x.text);
-        if (p) phon = p.text;
-      }
-    }
-    ipaCache[word] = phon || '';
-    saveIpa();
-    return phon || '';
-  } catch(e) {
-    return '';
-  }
-}
 
 // =====================================================================
 // CONFETTI
@@ -1523,17 +1489,13 @@ function showWord() {
     speakBtn.style.display = 'none';
   }
 
-  // IPA
+  // Hint sentence (first example, shown as /.../)
   const ipa = document.getElementById('ipa-display');
-  if (settings.ipaEnabled && currentDir === "en2tr") {
-    ipa.textContent = '';
-    ipa.classList.add('empty');
-    fetchIpa(current.en).then(p => {
-      if (current && current.en === current.en && p) {
-        ipa.textContent = p;
-        ipa.classList.remove('empty');
-      }
-    });
+  if (current.ex && current.ex.length > 0) {
+    const exSentence = current.ex[0].en;
+    // Blank out the target word to avoid giving away nothing extra
+    ipa.textContent = '​/ ' + exSentence + ' /';
+    ipa.classList.remove('empty');
   } else {
     ipa.classList.add('empty');
     ipa.textContent = '';
@@ -2230,7 +2192,6 @@ function formatAgo(ms) {
 function openSettings() {
   document.getElementById('session-len-input').value = settings.sessionLen;
   document.getElementById('hint-toggle').classList.toggle('on', settings.hintEnabled);
-  document.getElementById('ipa-toggle').classList.toggle('on', settings.ipaEnabled);
   renderCatChips();
   document.getElementById('settings-modal').classList.add('show');
 }
@@ -2882,12 +2843,6 @@ function bindUI() {
     e.target.classList.toggle('on', settings.hintEnabled);
     saveSettings();
     document.getElementById('hint-btn').style.display = (settings.hintEnabled && !answered) ? 'inline-block' : 'none';
-  });
-  document.getElementById('ipa-toggle').addEventListener('click', e => {
-    settings.ipaEnabled = !settings.ipaEnabled;
-    e.target.classList.toggle('on', settings.ipaEnabled);
-    saveSettings();
-    if (!settings.ipaEnabled) document.getElementById('ipa-display').classList.add('empty');
   });
   document.getElementById('voice-toggle').addEventListener('click', e => {
     const SR2 = window.SpeechRecognition || window.webkitSpeechRecognition;
