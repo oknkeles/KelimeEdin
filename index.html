@@ -1492,9 +1492,13 @@ function showWord() {
   // Hint sentence (first example, shown as /.../)
   const ipa = document.getElementById('ipa-display');
   if (current.ex && current.ex.length > 0) {
-    const exSentence = current.ex[0].en;
-    // Blank out the target word to avoid giving away nothing extra
-    ipa.textContent = '​/ ' + exSentence + ' /';
+    let exText = current.ex[0].en;
+    if (currentDir === 'tr2en') {
+      // Blank the target word so the answer isn't revealed
+      const escaped = current.en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      exText = exText.replace(new RegExp('\\b' + escaped + '(?:s|es|ed|ing|er|est|ly|d)?\\b', 'gi'), '____');
+    }
+    ipa.textContent = '/ ' + exText + ' /';
     ipa.classList.remove('empty');
   } else {
     ipa.classList.add('empty');
