@@ -1220,39 +1220,66 @@ async function loadWords() {
 // =====================================================================
 // STORAGE
 // =====================================================================
-function loadAll() {
+// Read one key in isolation. A single corrupt entry used to abort loadAll()
+// halfway, silently resetting every key after it (settings, streak, level).
+function loadJSON(key, fallback) {
   try {
-    let s = localStorage.getItem(STORE_KEY);
-    if (!s) {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return (parsed === null || parsed === undefined) ? fallback : parsed;
+  } catch(e) {
+    console.warn('Bozuk kayıt atlandı:', key, e);
+    return fallback;
+  }
+}
+
+function loadAll() {
+  // One-time migration from the pre-dueAt score format
+  try {
+    if (!localStorage.getItem(STORE_KEY)) {
       const old = localStorage.getItem(STORE_KEY_OLD);
       if (old) {
         const oldScores = JSON.parse(old);
-        for (const k in oldScores) {
-          const o = oldScores[k];
-          oldScores[k] = { ...o, dueAt: Date.now() };
-        }
-        s = JSON.stringify(oldScores);
-        localStorage.setItem(STORE_KEY, s);
+        for (const k in oldScores) oldScores[k] = { ...oldScores[k], dueAt: Date.now() };
+        localStorage.setItem(STORE_KEY, JSON.stringify(oldScores));
       }
     }
-    if (s) scores = JSON.parse(s);
-    const g = localStorage.getItem(GLOBAL_KEY);
-    if (g) global = JSON.parse(g);
-    const st = localStorage.getItem(STREAK_KEY);
-    if (st) streak = JSON.parse(st);
-    const se = localStorage.getItem(SETTINGS_KEY);
-    if (se) settings = { ...settings, ...JSON.parse(se) };
-    const rl = localStorage.getItem(RECENT_LEARNED_KEY);
-    if (rl) recentLearned = JSON.parse(rl);
-    const ac = localStorage.getItem(ACTIVITY_KEY);
-    if (ac) activity = JSON.parse(ac);
-    const ach = localStorage.getItem(ACH_KEY);
-    if (ach) achievements = JSON.parse(ach);
-    const nt = localStorage.getItem(NOTES_KEY);
-    if (nt) notes = JSON.parse(nt);
-    const cp = localStorage.getItem(CEFR_PROGRESS_KEY);
-    if (cp) cefrProgress = JSON.parse(cp);
-  } catch(e) { console.warn('loadAll', e); }
+  } catch(e) { console.warn('Eski skor taşıması atlandı', e); }
+
+  scores        = loadJSON(STORE_KEY, scores);
+  global        = loadJSON(GLOBAL_KEY, global);
+  streak        = loadJSON(STREAK_KEY, streak);
+  settings      = { ...settings, ...loadJSON(SETTINGS_KEY, {}) };
+  recentLearned = loadJSON(RECENT_LEARNED_KEY, recentLearned);
+  activity      = loadJSON(ACTIVITY_KEY, activity);
+  achievements  = loadJSON(ACH_KEY, achievements);
+  notes         = loadJSON(NOTES_KEY, notes);
+  cefrProgress  = loadJSON(CEFR_PROGRESS_KEY, cefrProgress);
+
+  // Values that reach arithmetic or array indexing must be sane even if the
+  // stored JSON was hand-edited, truncated, or written by an older version.
+  if (!scores || typeof scores !== 'object') scores = {};
+  if (!notes || typeof notes !== 'object') notes = {};
+  if (!Array.isArray(recentLearned)) recentLearned = [];
+  if (!Array.isArray(achievements)) achievements = [];
+  if (!activity || typeof activity !== 'object') activity = {};
+  if (!cefrProgress || typeof cefrProgress !== 'object') cefrProgress = { unlockedLevel: 0 };
+
+  const lvl = Math.floor(Number(cefrProgress.unlockedLevel));
+  cefrProgress.unlockedLevel = Number.isFinite(lvl)
+    ? Math.min(CEFR_ORDER.length - 1, Math.max(0, lvl)) : 0;
+
+  const len = Math.floor(Number(settings.sessionLen));
+  settings.sessionLen = Number.isFinite(len) ? Math.min(100, Math.max(5, len)) : 20;
+  if (!Array.isArray(settings.catFilter)) settings.catFilter = [];
+
+  // global.learned is a running counter kept alongside the per-word flags, so it
+  // can drift from reality. The flags are the source of truth — recount from them.
+  if (!global || typeof global !== 'object') global = { correct: 0, wrong: 0, learned: 0 };
+  global.correct = Math.max(0, Math.floor(Number(global.correct)) || 0);
+  global.wrong   = Math.max(0, Math.floor(Number(global.wrong)) || 0);
+  global.learned = Object.values(scores).filter(s => s && s.struggleConquered).length;
 }
 function save() {
   try {
@@ -1358,28 +1385,35 @@ function pickNext() {
     const recencyPenalty = s.lastSeen ? Math.max(0, 5 - (now - s.lastSeen)/60000) : 0;
     const bucketWeight = Math.max(1, 6 - s.bucket);
     let weight = wrongWeight + bucketWeight * 2 - correctPenalty - recencyPenalty;
-    if (s.struggleConquered) weight *= 0.15;
+    // A learned word rests until its review date, then comes back at full strength.
+    // Suppressing it even when due meant learned words were effectively retired
+    // and silently forgotten.
+    const isDue = s.dueAt && s.dueAt <= now;
+    if (s.struggleConquered && !isDue) weight *= 0.15;
     if (weight < 0.5) weight = 0.5;
-    // Due-for-review boost (replaces the old random-due bypass)
-    if (s.dueAt && s.dueAt <= now && !s.struggleConquered) weight *= 4;
+    if (isDue) weight *= 4;
     // Apply CEFR level multiplier: current level gets max weight, lower levels get progressively less
     const levelIdx = CEFR_ORDER.indexOf(getWordCEFR(w));
-    const levelDiff = cefrProgress.unlockedLevel - levelIdx;
+    // Clamp: the emergency "pool = WORDS" fallback can surface words above the
+    // unlocked level, and a negative index here would make weight NaN.
+    const levelDiff = Math.max(0, cefrProgress.unlockedLevel - levelIdx);
     weight *= CEFR_LEVEL_WEIGHTS[Math.min(levelDiff, CEFR_LEVEL_WEIGHTS.length - 1)];
     weight *= (0.7 + Math.random() * 0.6);
     return { word: w, weight };
   });
-  candidates.sort((a, b) => b.weight - a.weight);
-  const topN = Math.max(5, Math.floor(candidates.length * 0.15));
-  const top = candidates.slice(0, topN);
-  return top[Math.floor(Math.random() * top.length)].word;
-}
-
-function scheduleNext(s, isCorrect) {
-  if (isCorrect) s.bucket = Math.min(SR_INTERVALS_DAYS.length - 1, s.bucket + 1);
-  else s.bucket = Math.max(0, s.bucket - 1);
-  const days = SR_INTERVALS_DAYS[s.bucket] || 1;
-  s.dueAt = Date.now() + days * 86400000;
+  // Roulette-wheel selection: a word's weight is its real share of the draw.
+  // The old "sort, keep the top 15%, pick uniformly" collapsed every weight
+  // below the cutoff to a zero chance, so at B2 the user saw only B2 words and
+  // a learned word could never resurface even once its review date had passed.
+  let totalWeight = 0;
+  for (const c of candidates) totalWeight += c.weight;
+  if (!(totalWeight > 0)) return candidates[Math.floor(Math.random() * candidates.length)].word;
+  let r = Math.random() * totalWeight;
+  for (const c of candidates) {
+    r -= c.weight;
+    if (r <= 0) return c.word;
+  }
+  return candidates[candidates.length - 1].word;
 }
 
 // =====================================================================
@@ -1690,6 +1724,14 @@ function finalizeAnswer(isCorrect, isSkip) {
     s.bucket = Math.max(0, s.bucket - 1);
     s.dueAt = Date.now() + 1 * 86400000;
     global.wrong++;
+    // A word you just got wrong is not learned any more. Now that learned words
+    // resurface for review, leaving it flagged would park a forgotten word in
+    // "Öğrenilenler" forever, where neither list would ever surface it again.
+    if (s.struggleConquered) {
+      s.struggleConquered = false;
+      global.learned = Math.max(0, (global.learned || 0) - 1);
+      recentLearned = recentLearned.filter(r => r.en !== current.en);
+    }
     resultBox.className = 'result-box show wrong';
     resultTitle.className = 'result-title wrong';
     resultTitle.textContent = isSkip ? '⏭ Pas • Doğru cevap' : '✗ Yanlış • Doğru cevap';
@@ -1836,18 +1878,6 @@ function updateSessionBar() {
 // =====================================================================
 // CEFR PROGRESSION
 // =====================================================================
-function detectCefrLevel() {
-  // For existing users: detect highest CEFR level they've already practiced
-  let maxIdx = 0;
-  for (const word of WORDS) {
-    const s = scores[word.en];
-    if (!s || (s.correct + s.wrong) < 1) continue;
-    const idx = CEFR_ORDER.indexOf(getWordCEFR(word));
-    if (idx > maxIdx) maxIdx = idx;
-  }
-  return maxIdx;
-}
-
 function checkLevelChange() {
   const total = session.correct + session.wrong;
   if (total === 0) return { levelUp: null, levelDown: null };
@@ -2070,7 +2100,7 @@ function renderHardestWords() {
   const list = document.getElementById('hardest-list');
   if (hardest.length === 0) { list.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px 4px">Henüz yeterli veri yok.</div>'; return; }
   list.innerHTML = hardest.map(h =>
-    '<div class="hardest-word"><div><div class="hw-en">' + escape(h.w.en) + '</div><div class="hw-tr">' + escape(h.w.tr) + '</div></div>' +
+    '<div class="hardest-word"><div><div class="hw-en">' + esc(h.w.en) + '</div><div class="hw-tr">' + esc(h.w.tr) + '</div></div>' +
     '<div class="hw-acc">%' + Math.round(h.acc * 100) + ' doğru</div></div>'
   ).join('');
 }
@@ -2132,7 +2162,7 @@ function renderLearned() {
       }
       let html = '<div class="learned-section"><div class="learned-section-title">💪 Güçlü Kelimelerim <span class="badge" style="background:rgba(67,233,123,0.15);color:#43e97b">' + strong.length + '</span></div>';
       strong.forEach(({ w, s }) => {
-        html += '<div class="learned-word" data-word="' + escape(w.en) + '" style="cursor:pointer;border-color:rgba(67,233,123,0.2)" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + makeCefrBadge(w) + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><span class="lw-acc ok">' + s.correct + '✓</span><span class="lw-meta">0✗</span></div></div>';
+        html += '<div class="learned-word" data-word="' + esc(w.en) + '" style="cursor:pointer;border-color:rgba(67,233,123,0.2)" onclick="openWordDetailByEn(\'' + esc(w.en) + '\')"><div><div class="lw-en">' + esc(w.en) + makeCefrBadge(w) + '</div><div class="lw-tr">' + esc(w.tr) + '</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><span class="lw-acc ok">' + s.correct + '✓</span><span class="lw-meta">0✗</span></div></div>';
       });
       html += '</div>';
       container.innerHTML = html;
@@ -2143,7 +2173,7 @@ function renderLearned() {
       }
       let html = '<div class="learned-section"><div class="learned-section-title">🎯 Zorlanıyorum <span class="badge" style="background:rgba(245,87,108,0.15);color:#f5576c">' + weak.length + '</span></div>';
       weak.forEach(({ w, s }) => {
-        html += '<div class="learned-word" data-word="' + escape(w.en) + '" style="cursor:pointer;border-color:rgba(245,87,108,0.2)" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + makeCefrBadge(w) + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><span class="lw-acc bad">' + (s.wrong || 0) + '✗</span><span class="lw-meta">' + (s.correct || 0) + '✓</span></div></div>';
+        html += '<div class="learned-word" data-word="' + esc(w.en) + '" style="cursor:pointer;border-color:rgba(245,87,108,0.2)" onclick="openWordDetailByEn(\'' + esc(w.en) + '\')"><div><div class="lw-en">' + esc(w.en) + makeCefrBadge(w) + '</div><div class="lw-tr">' + esc(w.tr) + '</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><span class="lw-acc bad">' + (s.wrong || 0) + '✗</span><span class="lw-meta">' + (s.correct || 0) + '✓</span></div></div>';
       });
       html += '</div>';
       container.innerHTML = html;
@@ -2169,7 +2199,7 @@ function renderLearned() {
     recentLearned.slice(0, 10).forEach(w => {
       const ago = formatAgo(Date.now() - w.ts);
       const wObj = WORDS.find(x => x.en === w.en);
-      html += '<div class="learned-word recent" data-word="' + escape(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + (wObj ? makeCefrBadge(wObj) : '') + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div class="lw-meta">' + ago + ' ›</div></div>';
+      html += '<div class="learned-word recent" data-word="' + esc(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + esc(w.en) + '\')"><div><div class="lw-en">' + esc(w.en) + (wObj ? makeCefrBadge(wObj) : '') + '</div><div class="lw-tr">' + esc(w.tr) + '</div></div><div class="lw-meta">' + ago + ' ›</div></div>';
     });
     html += '</div>';
   }
@@ -2178,7 +2208,7 @@ function renderLearned() {
     struggle.forEach(w => {
       const s = scores[w.en];
       const leechMark = isLeech(w.en) ? '<span class="leech-badge">🐛</span>' : '';
-      html += '<div class="learned-word struggle" data-word="' + escape(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + makeCefrBadge(w) + leechMark + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div class="lw-meta gold">' + s.correct + ' ✓ • ' + s.wrong + ' ✗ ›</div></div>';
+      html += '<div class="learned-word struggle" data-word="' + esc(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + esc(w.en) + '\')"><div><div class="lw-en">' + esc(w.en) + makeCefrBadge(w) + leechMark + '</div><div class="lw-tr">' + esc(w.tr) + '</div></div><div class="lw-meta gold">' + s.correct + ' ✓ • ' + s.wrong + ' ✗ ›</div></div>';
     });
     html += '</div>';
   }
@@ -2186,13 +2216,13 @@ function renderLearned() {
     html += '<div class="learned-section"><div class="learned-section-title">✨ Hızlıca Öğrendin <span class="badge">' + easy.length + '</span></div>';
     easy.forEach(w => {
       const s = scores[w.en];
-      html += '<div class="learned-word" data-word="' + escape(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + escape(w.en) + '\')"><div><div class="lw-en">' + escape(w.en) + makeCefrBadge(w) + '</div><div class="lw-tr">' + escape(w.tr) + '</div></div><div class="lw-meta">' + s.correct + ' ✓ ›</div></div>';
+      html += '<div class="learned-word" data-word="' + esc(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + esc(w.en) + '\')"><div><div class="lw-en">' + esc(w.en) + makeCefrBadge(w) + '</div><div class="lw-tr">' + esc(w.tr) + '</div></div><div class="lw-meta">' + s.correct + ' ✓ ›</div></div>';
     });
     html += '</div>';
   }
   container.innerHTML = html;
 }
-function escape(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function formatAgo(ms) {
   const m = Math.floor(ms / 60000);
   if (m < 1) return 'şimdi';
@@ -2368,8 +2398,8 @@ function renderAchievements() {
     const unlocked = !!achievements[a.id];
     return '<div class="ach-card ' + (unlocked ? 'unlocked' : 'locked') + '">' +
       '<div class="ach-icon">' + a.icon + '</div>' +
-      '<div><div class="ach-title">' + escape(a.title) + '</div>' +
-      '<div class="ach-desc">' + escape(a.desc) + '</div></div></div>';
+      '<div><div class="ach-title">' + esc(a.title) + '</div>' +
+      '<div class="ach-desc">' + esc(a.desc) + '</div></div></div>';
   }).join('');
 }
 
@@ -2431,14 +2461,14 @@ function openWordDetail(word) {
   const content = document.getElementById('word-detail-content');
   content.innerHTML =
     '<div class="modal-header">' +
-      '<div class="modal-title">' + escape(word.en) + '</div>' +
+      '<div class="modal-title">' + esc(word.en) + '</div>' +
       '<button class="modal-close" onclick="closeWordDetail()" type="button" aria-label="Kapat">×</button>' +
     '</div>' +
     '<div style="margin-bottom:12px">' +
       '<span class="cefr-badge cefr-' + cefr.toLowerCase() + '">' + cefr + '</span>' +
       (isLeech(word.en) ? '<span class="leech-badge">🐛 Zor kelime</span>' : '') +
     '</div>' +
-    '<div style="font-family:Fraunces,serif;font-size:26px;font-weight:900;margin-bottom:4px">' + escape(word.tr) + '</div>' +
+    '<div style="font-family:Fraunces,serif;font-size:26px;font-weight:900;margin-bottom:4px">' + esc(word.tr) + '</div>' +
     '<div style="font-size:12px;color:var(--text-dim);margin-bottom:14px">' + (CAT_LABELS[word.cat] || word.cat) + (dueIn > 0 ? ' · Tekrar: ' + dueIn + ' gün sonra' : '') + '</div>' +
     '<div class="wd-score-row">' +
       '<div class="wd-score-item"><div class="wd-score-num" style="color:#43e97b">' + correct + '</div><div class="wd-score-label">Doğru</div></div>' +
@@ -2448,13 +2478,13 @@ function openWordDetail(word) {
     '<div class="modal-section"><h4>Örnek Cümleler</h4>' +
     word.ex.map(ex =>
       '<div class="example-item">' +
-      '<div class="example-en"><button class="ex-speak" onclick="speak(\'' + escape(ex.en.replace(/'/g,"\\'")) + '\',\'en-US\')" type="button"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg></button><span>' + escape(ex.en) + '</span></div>' +
-      '<div class="example-tr">' + escape(ex.tr) + '</div>' +
+      '<div class="example-en"><button class="ex-speak" onclick="speak(\'' + esc(ex.en.replace(/'/g,"\\'")) + '\',\'en-US\')" type="button"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg></button><span>' + esc(ex.en) + '</span></div>' +
+      '<div class="example-tr">' + esc(ex.tr) + '</div>' +
       '</div>'
     ).join('') + '</div>' +
     '<div class="modal-section"><h4>Hafıza Notu (İpucu)</h4>' +
-      '<textarea class="wd-note" id="wd-note-input" placeholder="Bu kelimeyi hatırlamak için bir çağrışım yaz...">' + escape(note) + '</textarea>' +
-      '<button class="btn-row" id="wd-save-note" onclick="saveWordNote(\'' + escape(word.en) + '\')" style="margin-top:8px;width:100%" type="button">💾 Notu Kaydet</button>' +
+      '<textarea class="wd-note" id="wd-note-input" placeholder="Bu kelimeyi hatırlamak için bir çağrışım yaz...">' + esc(note) + '</textarea>' +
+      '<button class="btn-row" id="wd-save-note" onclick="saveWordNote(\'' + esc(word.en) + '\')" style="margin-top:8px;width:100%" type="button">💾 Notu Kaydet</button>' +
     '</div>';
   modal.classList.add('show');
 }
@@ -2837,7 +2867,12 @@ function bindUI() {
 
   document.getElementById('answer-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') {
-      e.preventDefault(); unlockTTS();
+      e.preventDefault();
+      // checkAnswer() blurs the input, so by the time this event bubbled to the
+      // document handler its "is an input focused?" guard would no longer hold
+      // and it would fire showWord() on the same keypress — skipping the result.
+      e.stopPropagation();
+      unlockTTS();
       if (answered) showWord(); else checkAnswer();
     }
   });
