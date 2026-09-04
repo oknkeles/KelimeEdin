@@ -235,12 +235,12 @@ main { max-width: 720px; margin: 0 auto; padding: 0 14px calc(80px + var(--safe-
   font-size: 32px; line-height: 1.05; letter-spacing: -1px;
   word-break: break-word; flex: 1; min-width: 0;
 }
-.ipa {
+.hint-sentence {
   font-size: 13px; color: var(--text-dim); margin-bottom: 12px;
   font-style: italic; letter-spacing: 0.2px;
   min-height: 18px;
 }
-.ipa.empty { opacity: 0; }
+.hint-sentence.empty { opacity: 0; }
 .word-history {
   display: flex; align-items: center; gap: 3px; flex-wrap: wrap;
   min-height: 16px; margin-bottom: 4px;
@@ -906,7 +906,7 @@ button:focus:not(:focus-visible) { outline: none; }
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
         </button>
       </div>
-      <div class="ipa empty" id="ipa-display"></div>
+      <div class="hint-sentence empty" id="hint-sentence"></div>
       <div class="word-history" id="word-history"></div>
       <input type="text" class="answer-input" id="answer-input"
         placeholder="Cevabını yaz..." autocomplete="off"
@@ -1490,7 +1490,7 @@ function showWord() {
   }
 
   // Hint sentence (first example, shown as /.../)
-  const ipa = document.getElementById('ipa-display');
+  const hintSentence = document.getElementById('hint-sentence');
   if (current.ex && current.ex.length > 0) {
     let exText = current.ex[0].en;
     if (currentDir === 'tr2en') {
@@ -1498,11 +1498,11 @@ function showWord() {
       const escaped = current.en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       exText = exText.replace(new RegExp('\\b' + escaped + '(?:s|es|ed|ing|er|est|ly|d)?\\b', 'gi'), '____');
     }
-    ipa.textContent = '/ ' + exText + ' /';
-    ipa.classList.remove('empty');
+    hintSentence.textContent = '/ ' + exText + ' /';
+    hintSentence.classList.remove('empty');
   } else {
-    ipa.classList.add('empty');
-    ipa.textContent = '';
+    hintSentence.classList.add('empty');
+    hintSentence.textContent = '';
   }
 
   // Word history mini-visual
@@ -1579,6 +1579,23 @@ function fuzzyEqual(user, expected, lang) {
   return false;
 }
 
+// All accepted spellings for an expected answer: the whole string, each
+// "/" or "," separated part, and each of those with any "(açıklama)" removed.
+// Parentheses are a disambiguation hint for the reader, never part of the answer,
+// so "ay (takvim)" must accept plain "ay".
+function answerVariants(expected) {
+  const out = new Set();
+  const add = str => {
+    const full = normalize(str);
+    if (full) out.add(full);
+    const bare = normalize(str.replace(/\([^)]*\)/g, ' '));
+    if (bare) out.add(bare);
+  };
+  add(expected);
+  expected.split(/[\/,]/).forEach(add);
+  return [...out];
+}
+
 function checkAnswer() {
   if (answered) return;
   const input = document.getElementById('answer-input');
@@ -1587,24 +1604,18 @@ function checkAnswer() {
 
   const expected = currentDir === "en2tr" ? current.tr : current.en;
   const lang = currentDir === "en2tr" ? "tr" : "en";
-  const expectedNorm = normalize(expected);
-  const alternates = expected.split(/[\/,]/).map(s => normalize(s));
-  let isCorrect = fuzzyEqual(userAnswer, expectedNorm, lang) ||
-    alternates.some(alt => fuzzyEqual(userAnswer, alt, lang));
+  let isCorrect = answerVariants(expected).some(v => fuzzyEqual(userAnswer, v, lang));
 
   if (!isCorrect) {
     const alts = ALT_MEANINGS[current.en.toLowerCase()] || [];
     if (currentDir === "en2tr") {
       for (const a of alts) {
-        if (a.tr && fuzzyEqual(userAnswer, normalize(a.tr), 'tr')) { isCorrect = true; break; }
-        if (a.tr && a.tr.includes('/')) {
-          for (const part of a.tr.split('/')) if (fuzzyEqual(userAnswer, normalize(part), 'tr')) { isCorrect = true; break; }
-        }
+        if (a.tr && answerVariants(a.tr).some(v => fuzzyEqual(userAnswer, v, 'tr'))) { isCorrect = true; break; }
       }
     } else {
       const trNorm = current.tr.toLowerCase().trim();
       const validEns = TR_TO_EN[trNorm] || [];
-      if (validEns.some(en => fuzzyEqual(userAnswer, en, 'en'))) isCorrect = true;
+      if (validEns.some(en => fuzzyEqual(userAnswer, normalize(en), 'en'))) isCorrect = true;
     }
   }
   finalizeAnswer(isCorrect, false);
@@ -1622,6 +1633,8 @@ function finalizeAnswer(isCorrect, isSkip) {
   input.blur(); // klavyeyi kapat, viewport stabilize olsun
   document.getElementById('cat-emoji').style.display = 'none';
   document.getElementById('word-history').innerHTML = '';
+  // Examples box below repeats this sentence — keep it (opacity only) to avoid layout shift
+  document.getElementById('hint-sentence').classList.add('empty');
   document.getElementById('check-btn').style.display = 'none';
   document.getElementById('hint-btn').style.display = 'none';
   document.getElementById('skip-btn').style.display = 'none';
