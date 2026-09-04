@@ -568,6 +568,8 @@ input.answer-input:focus { border-color: var(--accent2); background: rgba(255,25
 }
 .chip.active { background: var(--gradient1); color: white; border-color: transparent; }
 .chip:active { transform: scale(0.95); }
+.chip.locked { opacity: 0.35; cursor: not-allowed; }
+.chip.locked:active { transform: none; }
 
 .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; }
 .toggle-row span { font-size: 14px; }
@@ -1170,6 +1172,8 @@ const ALT_MEANINGS = {"home":[{"en":"house","tr":"ev"}],"house":[{"en":"home","t
 // =====================================================================
 let WORDS = [];
 let TR_TO_EN = {};
+let EN_ANSWERS = new Set(); // every EN word in the deck, normalized
+let TR_ANSWERS = new Set(); // every TR meaning in the deck, normalized
 let scores = {};
 let global = { correct: 0, wrong: 0, learned: 0 };
 let streak = { current: 0, lastDay: null };
@@ -1178,7 +1182,7 @@ let settings = { sessionLen: 20, hintEnabled: true, voiceEnabled: false, notifEn
 let recentLearned = []; // [{en, tr, ts}, ...] last 30
 let activity = {}; // { "2024-01-15": { correct: 5, wrong: 2, learned: 1 } }
 let retryQueue = []; // words to retry this session [{word, showAfter}]
-let session = { idx: 0, correct: 0, wrong: 0, learned: 0, hintUsed: false };
+let session = { idx: 0, correct: 0, wrong: 0, learned: 0, hintUsed: false, summaryShown: false };
 let current = null;
 let currentDir = "en2tr";
 let answered = false;
@@ -1259,11 +1263,14 @@ function loadAll() {
 
   // Values that reach arithmetic or array indexing must be sane even if the
   // stored JSON was hand-edited, truncated, or written by an older version.
-  if (!scores || typeof scores !== 'object') scores = {};
-  if (!notes || typeof notes !== 'object') notes = {};
+  // These are all plain objects keyed by word/id/date — an array would break
+  // property writes like achievements[id] and silently discard them on save.
+  const isPlainObject = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+  if (!isPlainObject(scores)) scores = {};
+  if (!isPlainObject(notes)) notes = {};
+  if (!isPlainObject(activity)) activity = {};
+  if (!isPlainObject(achievements)) achievements = {};
   if (!Array.isArray(recentLearned)) recentLearned = [];
-  if (!Array.isArray(achievements)) achievements = [];
-  if (!activity || typeof activity !== 'object') activity = {};
   if (!cefrProgress || typeof cefrProgress !== 'object') cefrProgress = { unlockedLevel: 0 };
 
   const lvl = Math.floor(Number(cefrProgress.unlockedLevel));
@@ -1281,6 +1288,7 @@ function loadAll() {
   global.wrong   = Math.max(0, Math.floor(Number(global.wrong)) || 0);
   global.learned = Object.values(scores).filter(s => s && s.struggleConquered).length;
 }
+let saveFailed = false;
 function save() {
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify(scores));
@@ -1288,7 +1296,16 @@ function save() {
     localStorage.setItem(STREAK_KEY, JSON.stringify(streak));
     localStorage.setItem(RECENT_LEARNED_KEY, JSON.stringify(recentLearned));
     localStorage.setItem(ACTIVITY_KEY, JSON.stringify(activity));
-  } catch(e) {}
+    saveFailed = false;
+  } catch(e) {
+    // Storage full, or Private Browsing on iOS. Silently doing nothing here let
+    // users study a whole session and lose it on reload, believing it was saved.
+    console.warn('save', e);
+    if (!saveFailed) {
+      saveFailed = true;
+      alert('⚠️ İlerlemen kaydedilemiyor — cihaz depolaması dolu olabilir veya gizli sekmedesin. Bu oturumdaki çalışman kaybolabilir.');
+    }
+  }
 }
 function saveAchievements() {
   try { localStorage.setItem(ACH_KEY, JSON.stringify(achievements)); } catch(e) {}
@@ -1317,9 +1334,20 @@ function saveSettings() {
 // =====================================================================
 // STREAK
 // =====================================================================
-function todayKey() {
-  const d = new Date();
+function dayKey(d) {
   return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+}
+function todayKey() {
+  return dayKey(new Date());
+}
+// Parse a dayKey back to a timestamp. The stored format ("2026-9-4") is not
+// ISO-8601, so new Date(key) is implementation-defined: Safari can return
+// Invalid Date, which made every day-diff NaN — the streak reset to 1 daily and
+// never advanced, putting the 3- and 7-day achievements out of reach.
+function dayKeyToTime(key) {
+  const p = String(key).split('-').map(Number);
+  if (p.length !== 3 || p.some(n => !Number.isFinite(n))) return NaN;
+  return Date.UTC(p[0], p[1] - 1, p[2]);
 }
 function bumpStreak() {
   const today = todayKey();
@@ -1327,9 +1355,7 @@ function bumpStreak() {
   if (!streak.lastDay) {
     streak.current = 1;
   } else {
-    const last = new Date(streak.lastDay);
-    const now = new Date(today);
-    const diffDays = Math.round((now - last) / 86400000);
+    const diffDays = Math.round((dayKeyToTime(today) - dayKeyToTime(streak.lastDay)) / 86400000);
     streak.current = (diffDays === 1) ? streak.current + 1 : 1;
   }
   streak.lastDay = today;
@@ -1337,9 +1363,7 @@ function bumpStreak() {
 }
 function checkStreakStale() {
   if (!streak.lastDay) return;
-  const last = new Date(streak.lastDay);
-  const now = new Date(todayKey());
-  const diffDays = Math.round((now - last) / 86400000);
+  const diffDays = Math.round((dayKeyToTime(todayKey()) - dayKeyToTime(streak.lastDay)) / 86400000);
   if (diffDays > 1) streak.current = 0;
   renderStreak();
 }
@@ -1360,6 +1384,9 @@ function getScore(en) {
 
 function pickNext() {
   const now = Date.now();
+  // No deck (failed words.dat load) — the caller shows the error state instead
+  // of us indexing into an empty candidate list and throwing.
+  if (!Array.isArray(WORDS) || WORDS.length === 0) return null;
 
   // Retry queue: show wrong words again after 3+ cards
   const retryCandidate = retryQueue.find(r => r.showAfter <= session.idx);
@@ -1486,6 +1513,12 @@ function showWord() {
   document.getElementById('word-card').style.display = '';
 
   current = pickNext();
+  if (!current) {
+    document.getElementById('word-display').textContent = 'Kelimeler yüklenemedi 😔';
+    document.getElementById('hint-sentence').classList.add('empty');
+    document.getElementById('check-btn').style.display = 'none';
+    return;
+  }
   answered = false;
   session.hintUsed = false;
   currentDir = Math.random() < 0.5 ? "en2tr" : "tr2en";
@@ -1570,7 +1603,13 @@ function showWord() {
   document.getElementById('result-box').classList.remove('show', 'correct', 'wrong', 'learned');
   document.getElementById('examples-box').classList.remove('show');
   document.getElementById('next-btn').classList.remove('show');
-  document.getElementById('diff-row').classList.remove('show');
+  const diffRow = document.getElementById('diff-row');
+  diffRow.classList.remove('show');
+  // Re-arm the buttons; applyDifficulty() disables and restyles them, and only
+  // hiding the row left them greyed out and unclickable for the rest of the page.
+  diffRow.querySelectorAll('.diff-btn').forEach(b => {
+    b.disabled = false; b.style.opacity = ''; b.style.fontWeight = '';
+  });
   document.getElementById('word-card').classList.remove('shake');
   updateSessionBar();
   input.focus();
@@ -1586,7 +1625,8 @@ function fuzzyEqual(user, expected, lang) {
   if (user === expected) return true;
   if (user.length < 2 || expected.length < 2) return false;
 
-  // Turkish verb infinitive: accept root form ("gel" for "gelmek")
+  // Turkish verb infinitive: accept root form ("gel" for "gelmek").
+  // This is an exact morphological rule, so it is applied before the deck check.
   if (lang === 'tr') {
     if (expected.length >= 5 && (expected.endsWith('mek') || expected.endsWith('mak'))) {
       if (user === expected.slice(0, -3)) return true;
@@ -1595,6 +1635,14 @@ function fuzzyEqual(user, expected, lang) {
       if (expected === user.slice(0, -3)) return true;
     }
   }
+
+  // Past this point only the fuzzy suffix rule remains. If what the user typed is
+  // itself a real word in the deck it is a different word, not a typo —
+  // "hear"/"heart", "bread"/"break", "tarif"/"tarih", "asla"/"aslan". Forgiving
+  // those taught the wrong spelling and inflated the session accuracy that
+  // drives CEFR promotion.
+  const deck = lang === 'tr' ? TR_ANSWERS : EN_ANSWERS;
+  if (deck && deck.has(user)) return false;
 
   // Suffix-only tolerance: differences must be at the END of the word.
   // Require common prefix ≥4 chars; trailing diff on each side ≤ allowed.
@@ -1686,7 +1734,11 @@ function finalizeAnswer(isCorrect, isSkip) {
 
   if (isCorrect) {
     s.correct++;
-    if (!session.hintUsed) global.correct++;
+    // Counted like any other correct answer. Skipping only this one counter left
+    // the stats page reading "Doğru 0 / Yanlış 0" while the daily chart and the
+    // goal ring showed the same answers as done. The hint's cost is the withheld
+    // learning bonus below, not a hole in the statistics.
+    global.correct++;
     if (effectiveCorrect) {
       if (s.wasWrong) {
         s.bucket = Math.min(SR_INTERVALS_DAYS.length - 1, s.bucket + 2);
@@ -1701,6 +1753,11 @@ function finalizeAnswer(isCorrect, isSkip) {
       }
       const days = SR_INTERVALS_DAYS[s.bucket] || 1;
       s.dueAt = Date.now() + days * 86400000;
+    } else {
+      // Hinted correct: no bucket advance, but the review date still has to move.
+      // Leaving it in the past kept pickNext applying its 4x due-boost on every
+      // draw, so a hinted word repeated far more often than intended, forever.
+      s.dueAt = Date.now() + 86400000;
     }
     if (justLearned) {
       resultBox.className = 'result-box show learned';
@@ -1926,6 +1983,13 @@ function renderCefrRoadmap(targetId) {
 }
 
 function showSessionSummary() {
+  // On the summary screen `answered` is still true and the input is hidden, so
+  // Space/Enter reaches the document handler and calls showWord() again, which
+  // lands right back here. Without this guard checkLevelChange() below would run
+  // once per keypress — handing out (or taking away) a CEFR level each time.
+  if (session.summaryShown) return;
+  session.summaryShown = true;
+
   document.getElementById('sum-correct').textContent = session.correct;
   document.getElementById('sum-wrong').textContent = session.wrong;
   document.getElementById('sum-learned').textContent = session.learned;
@@ -1994,7 +2058,11 @@ function showSessionSummary() {
 }
 
 function startNewSession() {
-  session = { idx: 0, correct: 0, wrong: 0, learned: 0, hintUsed: false };
+  session = { idx: 0, correct: 0, wrong: 0, learned: 0, hintUsed: false, summaryShown: false };
+  // Entries scheduled past the end of the last session can never fire — session.idx
+  // restarts at 0 — so they accumulated for the life of the page and would all
+  // surface at once if the user later raised the session length.
+  retryQueue = [];
   showWord();
 }
 
@@ -2068,7 +2136,7 @@ function renderWeeklyChart() {
   const dayData = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(today); d.setDate(today.getDate() - i);
-    const key = d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+    const key = dayKey(d);
     const a = activity[key] || { correct: 0, wrong: 0 };
     const val = a.correct + a.wrong;
     dayData.push({ label: days[d.getDay() === 0 ? 6 : d.getDay()-1], val, isToday: i === 0, key });
@@ -2136,6 +2204,11 @@ function makeCefrBadge(w) {
 
 function renderLearned() {
   const container = document.getElementById('learned-content');
+  // The search filter works by toggling display on the rows this function is
+  // about to replace, so a leftover query would keep its text in the box while
+  // silently matching nothing.
+  const searchBox = document.getElementById('learned-search');
+  if (searchBox) searchBox.value = '';
 
   if (currentVocabTab === 'strong' || currentVocabTab === 'weak') {
     const strong = [], weak = [];
@@ -2248,18 +2321,34 @@ function closeSettings() {
 function renderCatChips() {
   const wrap = document.getElementById('cat-chips');
   wrap.innerHTML = '';
+  // Some categories exist only at higher CEFR levels (Akademik is all C1, Resmi
+  // all C2). Selecting one of those was silently ignored — pickNext falls back to
+  // the whole pool when the filter matches nothing — so the user saw unrelated
+  // words and no explanation. Show what is actually reachable right now.
+  const unlockedLevels = CEFR_ORDER.slice(0, cefrProgress.unlockedLevel + 1);
+  const available = {};
+  WORDS.forEach(w => {
+    if (unlockedLevels.includes(getWordCEFR(w))) available[w.cat] = (available[w.cat] || 0) + 1;
+  });
+
   Object.entries(CAT_LABELS).forEach(([cat, label]) => {
+    const count = available[cat] || 0;
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'chip' + (settings.catFilter.includes(cat) ? ' active' : '');
-    btn.textContent = label;
-    btn.onclick = () => {
-      const idx = settings.catFilter.indexOf(cat);
-      if (idx >= 0) settings.catFilter.splice(idx, 1);
-      else settings.catFilter.push(cat);
-      btn.classList.toggle('active');
-      saveSettings();
-    };
+    btn.className = 'chip' + (settings.catFilter.includes(cat) ? ' active' : '') + (count === 0 ? ' locked' : '');
+    btn.textContent = count === 0 ? label + ' 🔒' : label + ' ' + count;
+    if (count === 0) {
+      btn.disabled = true;
+      btn.title = 'Bu kategorideki kelimeler daha üst seviyede açılıyor';
+    } else {
+      btn.onclick = () => {
+        const idx = settings.catFilter.indexOf(cat);
+        if (idx >= 0) settings.catFilter.splice(idx, 1);
+        else settings.catFilter.push(cat);
+        btn.classList.toggle('active');
+        saveSettings();
+      };
+    }
     wrap.appendChild(btn);
   });
 }
@@ -2267,6 +2356,9 @@ function renderCatChips() {
 function exportData() {
   const blob = new Blob([JSON.stringify({
     scores, global, streak, settings, recentLearned,
+    // These were missing, so restoring on a new phone silently dropped the CEFR
+    // level, the 7-day chart, every achievement and every hand-written note.
+    cefrProgress, activity, achievements, notes,
     exportedAt: new Date().toISOString()
   }, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -2287,9 +2379,16 @@ function importData(file) {
       if (data.streak) streak = data.streak;
       if (data.settings) settings = { ...settings, ...data.settings };
       if (data.recentLearned) recentLearned = data.recentLearned;
-      save(); saveSettings();
+      if (data.cefrProgress) cefrProgress = data.cefrProgress;
+      if (data.activity) activity = data.activity;
+      if (data.achievements) achievements = data.achievements;
+      if (data.notes) notes = data.notes;
+      save(); saveSettings(); saveCefrProgress(); saveAchievements(); saveNotes();
       alert('✅ Veri başarıyla yüklendi!');
-      updateMiniStats(); renderStreak();
+      // Repaint everything the restore touched; these used to keep showing the
+      // pre-import values until the user happened to switch tabs.
+      updateMiniStats(); renderStreak(); renderStats(); renderLearned();
+      renderCefrRoadmap('cefr-roadmap'); showWord();
     } catch(err) {
       alert('❌ Dosya okunamadı: ' + err.message);
     }
@@ -2304,9 +2403,18 @@ function resetProgress() {
   global = { correct: 0, wrong: 0, learned: 0 };
   streak = { current: 0, lastDay: null };
   recentLearned = [];
-  session = { idx: 0, correct: 0, wrong: 0, learned: 0, hintUsed: false };
-  save();
-  updateMiniStats(); renderStreak();
+  session = { idx: 0, correct: 0, wrong: 0, learned: 0, hintUsed: false, summaryShown: false };
+  // "Tüm ilerlemen silinecek" has to mean all of it. These used to survive a
+  // reset, leaving the weekly chart, the badges and the CEFR level untouched —
+  // and retryQueue kept serving pre-reset words as the next cards.
+  activity = {};
+  achievements = {};
+  notes = {};
+  cefrProgress = { unlockedLevel: 0 };
+  retryQueue = [];
+  save(); saveCefrProgress(); saveAchievements(); saveNotes();
+  updateMiniStats(); renderStreak(); renderStats(); renderLearned();
+  renderCefrRoadmap('cefr-roadmap');
   closeSettings();
   showWord();
 }
@@ -2587,7 +2695,7 @@ function showWeeklyRecap() {
   let totalCorrect = 0, totalWrong = 0, totalLearned = 0, activeDays = 0;
   for (let i = 0; i < 7; i++) {
     const d = new Date(today); d.setDate(today.getDate() - i);
-    const key = d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+    const key = dayKey(d);
     const a = activity[key] || {};
     totalCorrect += a.correct || 0;
     totalWrong += a.wrong || 0;
@@ -2677,6 +2785,15 @@ async function init() {
     }
   });
 
+  // Every string that is itself a real answer somewhere in the deck. fuzzyEqual
+  // refuses to "forgive" these: "hear" is a word, not a misspelling of "heart".
+  EN_ANSWERS = new Set();
+  TR_ANSWERS = new Set();
+  WORDS.forEach(w => {
+    EN_ANSWERS.add(normalize(w.en));
+    answerVariants(w.tr).forEach(v => TR_ANSWERS.add(v));
+  });
+
   // Always start at A1 — levels must be earned through 75% accuracy
   if (!localStorage.getItem(CEFR_PROGRESS_KEY)) {
     cefrProgress.unlockedLevel = 0;
@@ -2687,6 +2804,10 @@ async function init() {
 
   bindUI();
   updateMiniStats();
+  // Register the service worker before anything that can throw. It used to sit at
+  // the very end of init(), so a failed words.dat load took showWord() down with
+  // it and the SW was never registered — leaving the app broken offline forever.
+  registerServiceWorker();
   showWord();
   checkNotifBanner();
   scheduleStudyReminder();
@@ -2697,8 +2818,14 @@ async function init() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (SR && settings.voiceEnabled) document.getElementById('voice-btn').style.display = 'inline-flex';
 
-  // Service worker: register + auto-reload on update
-  if ('serviceWorker' in navigator) {
+  // Weekly recap (Sundays only)
+  checkWeeklyRecap();
+}
+
+// Service worker: register + auto-reload on update
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
     // Auto-reload when a new SW takes control (skipWaiting already set in sw.js)
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       window.location.reload();
@@ -2707,10 +2834,7 @@ async function init() {
       // Periodically check for updates (every 60s) for long-running sessions
       setInterval(() => reg.update(), 60000);
     }).catch(() => {});
-  }
-
-  // Weekly recap (Sundays only)
-  checkWeeklyRecap();
+  } catch(e) {}
 }
 
 // =====================================================================
@@ -2777,9 +2901,14 @@ function initSwipe() {
     if (!dragging || answered) { dragging = false; return; }
     dragging = false;
     const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
     hintLeft.style.opacity = 0; hintRight.style.opacity = 0;
+    // touchmove ignores vertical-dominant drags for the visual hint but does not
+    // cancel the gesture, so scrolling down to the examples with a little sideways
+    // drift used to fire skipAnswer() and score the word wrong, with no undo.
+    if (Math.abs(dy) > Math.abs(dx)) return;
     if (dx < -threshold) { skipAnswer(); }
-    else if (dx > threshold) { useHint(); }
+    else if (dx > threshold && settings.hintEnabled) { useHint(); }
   }, { passive: true });
 }
 
