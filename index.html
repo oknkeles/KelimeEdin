@@ -19,8 +19,11 @@
 <meta name="twitter:title" content="KelimeEdin – İngilizce Kelime Öğren">
 <meta name="twitter:description" content="Spaced repetition ile İngilizce kelime öğren. Ücretsiz, offline PWA.">
 <title>KelimeEdin - İngilizce Kelime Öğren</title>
-<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgMTgwIj48cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgcng9IjQwIiBmaWxsPSIjMGEwODE4Ii8+PHRleHQgeD0iOTAiIHk9IjEyMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSI5MCIgZmlsbD0iI2Y1NTc2YyI+SzwvdGV4dD48L3N2Zz4=">
-<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiS2VsaW1lRWRpbiIsInNob3J0X25hbWUiOiJLZWxpbWVFZGluIiwic3RhcnRfdXJsIjoiLiIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMwYTA4MTgiLCJ0aGVtZV9jb2xvciI6IiMwYTA4MTgifQ==">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -29,7 +32,7 @@
   --card-border: rgba(255,255,255,0.08);
   --text: #e8e4f0;
   --text-dim: #8a8295;
-  --text-muted: #5a5468;
+  --text-muted: #807990;
   --accent: #f5576c;
   --accent2: #4facfe;
   --success: #43e97b;
@@ -911,8 +914,8 @@ button:focus:not(:focus-visible) { outline: none; }
       <div class="hint-sentence empty" id="hint-sentence"></div>
       <div class="word-history" id="word-history"></div>
       <input type="text" class="answer-input" id="answer-input"
-        placeholder="Cevabını yaz..." autocomplete="off"
-        autocapitalize="off" spellcheck="false">
+        placeholder="Cevabını yaz..." autocomplete="off" autocorrect="off"
+        autocapitalize="off" spellcheck="false" aria-label="Cevabın">
       <div class="action-row">
         <button class="btn-primary" id="check-btn">Kontrol Et</button>
         <button class="voice-btn" id="voice-btn" type="button" title="Sesle cevapla" style="display:none">
@@ -1165,7 +1168,7 @@ const CAT_EMOJI = {
   academic: "🎓", formal: "📜"
 };
 
-const ALT_MEANINGS = {"home":[{"en":"house","tr":"ev"}],"house":[{"en":"home","tr":"ev"}],"stairs":[{"en":"ladder","tr":"merdiven"}],"ladder":[{"en":"stairs","tr":"merdiven"}],"clock":[{"en":"hour","tr":"saat"}],"hour":[{"en":"clock","tr":"saat"}],"snow":[{"en":"profit","tr":"kar"}],"profit":[{"en":"snow","tr":"kar"}],"do":[{"en":"make","tr":"yapmak"}],"make":[{"en":"do","tr":"yapmak"}],"get":[{"en":"take","tr":"almak"}],"take":[{"en":"get","tr":"almak"}],"idea":[{"en":"opinion","tr":"fikir"}],"opinion":[{"en":"idea","tr":"fikir"}],"wrong":[{"en":"false","tr":"yanlış"}],"false":[{"en":"wrong","tr":"yanlış"}],"information":[{"en":"knowledge","tr":"bilgi"}],"knowledge":[{"en":"information","tr":"bilgi"}],"alone":[{"en":"lonely","tr":"yalnız"}],"lonely":[{"en":"alone","tr":"yalnız"}],"bath":[{"en":"bathroom","tr":"banyo"}],"bathroom":[{"en":"bath","tr":"banyo"}],"client":[{"en":"customer","tr":"müşteri"}],"customer":[{"en":"client","tr":"müşteri"}],"brush":[{"tr":"fırçalamak"},{"tr":"fırça"}],"water":[{"tr":"sulamak"},{"tr":"su"}],"garden":[{"tr":"bahçe yapmak"},{"tr":"bahçe"}],"market":[{"tr":"pazar (ekonomi)"},{"tr":"pazar"}],"work":[{"tr":"iş"},{"tr":"çalışmak"}],"clean":[{"tr":"temizlemek"},{"tr":"temiz"}],"dirty":[{"tr":"kirletmek"},{"tr":"kirli"}],"dry":[{"tr":"kurutmak"},{"tr":"çamaşır"},{"tr":"kuru"}],"answer":[{"tr":"cevaplamak"},{"tr":"cevap"}],"trust":[{"tr":"güvenmek"},{"tr":"güven"}],"smile":[{"tr":"gülümsemek"},{"tr":"gülümseme"}],"iron":[{"tr":"ütülemek"},{"tr":"demir"}]};
+const ALT_MEANINGS = {"home":[{"en":"house","tr":"ev"}],"house":[{"en":"home","tr":"ev"}],"stairs":[{"en":"ladder","tr":"merdiven"}],"ladder":[{"en":"stairs","tr":"merdiven"}],"clock":[{"en":"hour","tr":"saat"}],"hour":[{"en":"clock","tr":"saat"}],"snow":[{"en":"profit","tr":"kar"}],"profit":[{"en":"snow","tr":"kar"}],"do":[{"en":"make","tr":"yapmak"}],"make":[{"en":"do","tr":"yapmak"}],"get":[{"en":"take","tr":"almak"}],"take":[{"en":"get","tr":"almak"}],"idea":[{"en":"opinion","tr":"fikir"}],"opinion":[{"en":"idea","tr":"fikir"}],"wrong":[{"en":"false","tr":"yanlış"}],"false":[{"en":"wrong","tr":"yanlış"}],"information":[{"en":"knowledge","tr":"bilgi"}],"knowledge":[{"en":"information","tr":"bilgi"}],"alone":[{"en":"lonely","tr":"yalnız"}],"lonely":[{"en":"alone","tr":"yalnız"}],"bath":[{"en":"bathroom","tr":"banyo"}],"bathroom":[{"en":"bath","tr":"banyo"}],"client":[{"en":"customer","tr":"müşteri"}],"customer":[{"en":"client","tr":"müşteri"}],"brush":[{"tr":"fırçalamak"},{"tr":"fırça"}],"water":[{"tr":"sulamak"},{"tr":"su"}],"market":[{"tr":"pazar (ekonomi)"},{"tr":"pazar"}],"work":[{"tr":"iş"},{"tr":"çalışmak"}],"clean":[{"tr":"temizlemek"},{"tr":"temiz"}],"dirty":[{"tr":"kirletmek"},{"tr":"kirli"}],"dry":[{"tr":"kurutmak"},{"tr":"kuru"}],"answer":[{"tr":"cevaplamak"},{"tr":"cevap"}],"trust":[{"tr":"güvenmek"},{"tr":"güven"}],"smile":[{"tr":"gülümsemek"},{"tr":"gülümseme"}],"iron":[{"tr":"ütülemek"},{"tr":"demir"}]};
 
 // =====================================================================
 // STATE
@@ -1174,6 +1177,7 @@ let WORDS = [];
 let TR_TO_EN = {};
 let EN_ANSWERS = new Set(); // every EN word in the deck, normalized
 let TR_ANSWERS = new Set(); // every TR meaning in the deck, normalized
+let FOLD_AMBIGUOUS = new Set(); // ASCII-folded forms shared by two different answers
 let scores = {};
 let global = { correct: 0, wrong: 0, learned: 0 };
 let streak = { current: 0, lastDay: null };
@@ -1182,7 +1186,7 @@ let settings = { sessionLen: 20, hintEnabled: true, voiceEnabled: false, notifEn
 let recentLearned = []; // [{en, tr, ts}, ...] last 30
 let activity = {}; // { "2024-01-15": { correct: 5, wrong: 2, learned: 1 } }
 let retryQueue = []; // words to retry this session [{word, showAfter}]
-let session = { idx: 0, correct: 0, wrong: 0, learned: 0, hintUsed: false, summaryShown: false };
+let session = { idx: 0, correct: 0, wrong: 0, learned: 0, hinted: 0, hintUsed: false, summaryShown: false };
 let current = null;
 let currentDir = "en2tr";
 let answered = false;
@@ -1193,6 +1197,7 @@ let achievements = {};
 let notes = {};
 let cefrProgress = { unlockedLevel: 0 }; // 0=A1only, 1=A1+A2, 2=+B1, 3=+B2
 let deferredInstallPrompt = null;
+let pendingReload = false; // a new service worker took over mid-session
 let currentTabIndex = 0;
 const TAB_ORDER = ['play', 'learned', 'stats'];
 
@@ -1205,7 +1210,9 @@ async function loadWords() {
     if (!resp.ok) throw new Error('words.dat fetch failed');
     const reversedB64 = await resp.text();
     const b64 = reversedB64.split('').reverse().join('');
-    const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const raw = atob(b64);
+    const bin = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) bin[i] = raw.charCodeAt(i);
     if (typeof DecompressionStream !== 'undefined') {
       const stream = new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'));
       const text = await new Response(stream).text();
@@ -1260,7 +1267,12 @@ function loadAll() {
   achievements  = loadJSON(ACH_KEY, achievements);
   notes         = loadJSON(NOTES_KEY, notes);
   cefrProgress  = loadJSON(CEFR_PROGRESS_KEY, cefrProgress);
+  sanitizeState();
+}
 
+// Shared by loadAll() and importData(): a restored backup is exactly as untrusted
+// as whatever is sitting in localStorage, and used to skip all of these checks.
+function sanitizeState() {
   // Values that reach arithmetic or array indexing must be sane even if the
   // stored JSON was hand-edited, truncated, or written by an older version.
   // These are all plain objects keyed by word/id/date — an array would break
@@ -1272,6 +1284,29 @@ function loadAll() {
   if (!isPlainObject(achievements)) achievements = {};
   if (!Array.isArray(recentLearned)) recentLearned = [];
   if (!cefrProgress || typeof cefrProgress !== 'object') cefrProgress = { unlockedLevel: 0 };
+  if (!isPlainObject(settings)) settings = {};
+  if (!isPlainObject(streak)) streak = {};
+  streak = {
+    current: Math.max(0, Math.floor(Number(streak.current)) || 0),
+    lastDay: typeof streak.lastDay === 'string' ? streak.lastDay : null,
+  };
+  recentLearned = recentLearned.filter(r => r && typeof r.en === 'string');
+
+  // Renamed in the word list ("save_money" → "save money"); carry progress over.
+  const RENAMED = { 'save_money': 'save money' };
+  for (const [from, to] of Object.entries(RENAMED)) {
+    if (scores[from] && !scores[to]) scores[to] = scores[from];
+    if (notes[from] && !notes[to]) notes[to] = notes[from];
+    delete scores[from]; delete notes[from];
+    recentLearned.forEach(r => { if (r.en === from) r.en = to; });
+  }
+  // Drop the empty placeholder records the old pickNext() stored for every
+  // word it merely considered — never answered, nothing to keep.
+  for (const k in scores) {
+    const s = scores[k];
+    if (!isPlainObject(s)) { delete scores[k]; continue; }
+    if (!s.correct && !s.wrong && !s.lastSeen) delete scores[k];
+  }
 
   const lvl = Math.floor(Number(cefrProgress.unlockedLevel));
   cefrProgress.unlockedLevel = Number.isFinite(lvl)
@@ -1375,6 +1410,10 @@ function renderStreak() {
 // =====================================================================
 // SCORE / SM-2
 // =====================================================================
+// Read-only default for words never answered. pickNext() used getScore() on the
+// whole pool, which stored an empty record for every candidate — up to 1100 of
+// them, all rewritten to localStorage on every answer and carried into backups.
+const EMPTY_SCORE = Object.freeze({ correct: 0, wrong: 0, lastSeen: 0, bucket: 0, wasWrong: false, struggleConquered: false, dueAt: 0 });
 function getScore(en) {
   if (!scores[en]) {
     scores[en] = { correct: 0, wrong: 0, lastSeen: 0, bucket: 0, wasWrong: false, struggleConquered: false, dueAt: 0 };
@@ -1406,7 +1445,7 @@ function pickNext() {
   if (pool.length === 0) pool = WORDS;
 
   const candidates = pool.map(w => {
-    const s = getScore(w.en);
+    const s = scores[w.en] || EMPTY_SCORE;
     const wrongWeight = (s.wrong + 1) * 4;
     const correctPenalty = s.correct * 1.5;
     const recencyPenalty = s.lastSeen ? Math.max(0, 5 - (now - s.lastSeen)/60000) : 0;
@@ -1507,6 +1546,10 @@ function showWord() {
     showSessionSummary();
     return;
   }
+
+  // The session goes on (its length was raised from the summary screen), so the
+  // next time it ends the summary — and the level check — must run again.
+  session.summaryShown = false;
 
   // Hide summary if visible
   document.getElementById('session-summary').classList.remove('show');
@@ -1616,7 +1659,19 @@ function showWord() {
 }
 
 function normalize(s) {
-  return s.toLowerCase().trim().replace(/[.,!?;:'"]/g, '').replace(/\s+/g, ' ');
+  // Turkish capitals first: JS lowercases 'İ' to 'i' + U+0307 (combining dot) and
+  // 'I' to 'i' instead of 'ı'. Both rejected correct answers — "İnek", or "KADIN"
+  // typed with caps lock. The English side's 'ı' vs 'i' is bridged by foldTr().
+  return String(s).replace(/İ/g, 'i').replace(/I/g, 'ı').toLowerCase()
+    .replace(/\u0307/g, '')
+    .trim().replace(/[.,!?;:'"]/g, '').replace(/\s+/g, ' ');
+}
+
+// Turkish letters → closest ASCII. Lets "cocuk" match "çocuk" for users on an
+// English keyboard layout, and "ıce" match "ice" for users on a Turkish one.
+const TR_FOLD = { 'ç': 'c', 'ğ': 'g', 'ı': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u', 'â': 'a', 'î': 'i', 'û': 'u' };
+function foldTr(s) {
+  return s.replace(/[çğıöşüâîû]/g, c => TR_FOLD[c]);
 }
 
 // Forgiving equality: handles Turkish -mek/-mak infinitive and small SUFFIX-only differences
@@ -1625,14 +1680,23 @@ function fuzzyEqual(user, expected, lang) {
   if (user === expected) return true;
   if (user.length < 2 || expected.length < 2) return false;
 
+  // Missing Turkish letters are not a different word: "cocuk" is "çocuk". The
+  // exception is a pair the deck itself tells apart only by those letters
+  // ("aşk" / "ask") — there the letter is the meaning, so stay strict.
+  const foldedExp = foldTr(expected);
+  const tolerant = !FOLD_AMBIGUOUS.has(foldedExp);
+  const u = tolerant ? foldTr(user) : user;
+  const x = tolerant ? foldedExp : expected;
+  if (u === x) return true;
+
   // Turkish verb infinitive: accept root form ("gel" for "gelmek").
   // This is an exact morphological rule, so it is applied before the deck check.
   if (lang === 'tr') {
-    if (expected.length >= 5 && (expected.endsWith('mek') || expected.endsWith('mak'))) {
-      if (user === expected.slice(0, -3)) return true;
+    if (x.length >= 5 && (x.endsWith('mek') || x.endsWith('mak'))) {
+      if (u === x.slice(0, -3)) return true;
     }
-    if (user.length >= 5 && (user.endsWith('mek') || user.endsWith('mak'))) {
-      if (expected === user.slice(0, -3)) return true;
+    if (u.length >= 5 && (u.endsWith('mek') || u.endsWith('mak'))) {
+      if (x === u.slice(0, -3)) return true;
     }
   }
 
@@ -1775,6 +1839,7 @@ function finalizeAnswer(isCorrect, isSkip) {
       vibrate([30, 40, 30]);
     }
     session.correct++;
+    if (session.hintUsed) session.hinted++;
   } else {
     s.wrong++;
     s.wasWrong = true;
@@ -1892,12 +1957,15 @@ function finalizeAnswer(isCorrect, isSkip) {
 function useHint() {
   if (answered || !current) return;
   const target = currentDir === "en2tr" ? current.tr : current.en;
-  const masked = target.split('').map((c, i) => i === 0 ? c.toUpperCase() : (/\s/.test(c) ? ' ' : '_')).join(' ');
+  const upper = c => currentDir === "en2tr" ? c.toLocaleUpperCase('tr') : c.toUpperCase();
+  const masked = target.split('').map((c, i) => i === 0 ? upper(c) : (/\s/.test(c) ? ' ' : '_')).join(' ');
   const display = document.getElementById('hint-display');
   display.textContent = masked + '   (' + target.length + ' harf)';
   display.classList.add('show');
   document.getElementById('hint-btn').disabled = true;
   session.hintUsed = true;
+  // Tapping the hint button took focus (and the keyboard) away from the answer.
+  document.getElementById('answer-input').focus();
 }
 
 function showExamples(word) {
@@ -1935,10 +2003,16 @@ function updateSessionBar() {
 // =====================================================================
 // CEFR PROGRESSION
 // =====================================================================
+// Accuracy used for promotion. A hinted answer is not one the user knew — with
+// hints on by default, hinting every card used to score 100% and unlock a level.
+function levelAccuracy() {
+  const total = session.correct + session.wrong;
+  return total > 0 ? (session.correct - session.hinted) / total : 0;
+}
 function checkLevelChange() {
   const total = session.correct + session.wrong;
   if (total === 0) return { levelUp: null, levelDown: null };
-  const acc = session.correct / total;
+  const acc = levelAccuracy();
 
   if (acc >= LEVEL_UP_THRESHOLD) {
     const nextIdx = cefrProgress.unlockedLevel + 1;
@@ -2036,7 +2110,10 @@ function showSessionSummary() {
   } else {
     const nextIdx = cefrProgress.unlockedLevel + 1;
     const hasNext = nextIdx < CEFR_ORDER.length;
-    if (acc >= 80) {
+    if (acc >= 80 && hasNext && session.hinted > 0) {
+      subEl.textContent = '💡 %' + acc + ' doğruluk, ' + session.hinted + ' tanesi ipuçlu. ' +
+        CEFR_ORDER[nextIdx] + ' için ipucusuz %80 gerekiyor.';
+    } else if (acc >= 80) {
       subEl.textContent = hasNext
         ? '💪 %' + acc + ' — bir sonraki seansta ' + CEFR_ORDER[nextIdx] + ' açılabilir!'
         : '🌟 %' + acc + ' — tüm seviyeleri tamamladın!';
@@ -2058,7 +2135,9 @@ function showSessionSummary() {
 }
 
 function startNewSession() {
-  session = { idx: 0, correct: 0, wrong: 0, learned: 0, hintUsed: false, summaryShown: false };
+  // A new version was installed mid-session; this is the moment to switch to it.
+  if (pendingReload) { window.location.reload(); return; }
+  session = { idx: 0, correct: 0, wrong: 0, learned: 0, hinted: 0, hintUsed: false, summaryShown: false };
   // Entries scheduled past the end of the last session can never fire — session.idx
   // restarts at 0 — so they accumulated for the life of the page and would all
   // surface at once if the user later raised the session length.
@@ -2175,9 +2254,15 @@ function renderHardestWords() {
 
 function renderEstimate() {
   const remaining = WORDS.filter(w => { const s = scores[w.en]; return !s || !s.struggleConquered; }).length;
-  const recentDays = Object.entries(activity).slice(-7);
-  const avgPerDay = recentDays.length > 0
-    ? recentDays.reduce((sum, [, a]) => sum + a.learned, 0) / recentDays.length : 0;
+  // The last 7 calendar days, idle ones counting as zero. This used to average the
+  // last 7 *recorded* days, so after a month off it still promised last month's pace.
+  const today = new Date();
+  let learnedLastWeek = 0;
+  for (let i = 0; i < 7; i++) {
+    const a = activity[dayKey(new Date(today.getFullYear(), today.getMonth(), today.getDate() - i))];
+    if (a) learnedLastWeek += Number(a.learned) || 0;
+  }
+  const avgPerDay = learnedLastWeek / 7;
   const el = document.getElementById('estimate-card');
   const txt = document.getElementById('estimate-text');
   if (avgPerDay < 0.5 || remaining === 0) { el.style.display = 'none'; return; }
@@ -2235,7 +2320,7 @@ function renderLearned() {
       }
       let html = '<div class="learned-section"><div class="learned-section-title">💪 Güçlü Kelimelerim <span class="badge" style="background:rgba(67,233,123,0.15);color:#43e97b">' + strong.length + '</span></div>';
       strong.forEach(({ w, s }) => {
-        html += '<div class="learned-word" data-word="' + esc(w.en) + '" style="cursor:pointer;border-color:rgba(67,233,123,0.2)" onclick="openWordDetailByEn(\'' + esc(w.en) + '\')"><div><div class="lw-en">' + esc(w.en) + makeCefrBadge(w) + '</div><div class="lw-tr">' + esc(w.tr) + '</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><span class="lw-acc ok">' + s.correct + '✓</span><span class="lw-meta">0✗</span></div></div>';
+        html += '<div class="learned-word" data-word="' + esc(w.en) + '" style="cursor:pointer;border-color:rgba(67,233,123,0.2)" role="button" tabindex="0"><div><div class="lw-en">' + esc(w.en) + makeCefrBadge(w) + '</div><div class="lw-tr">' + esc(w.tr) + '</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><span class="lw-acc ok">' + s.correct + '✓</span><span class="lw-meta">0✗</span></div></div>';
       });
       html += '</div>';
       container.innerHTML = html;
@@ -2246,7 +2331,7 @@ function renderLearned() {
       }
       let html = '<div class="learned-section"><div class="learned-section-title">🎯 Zorlanıyorum <span class="badge" style="background:rgba(245,87,108,0.15);color:#f5576c">' + weak.length + '</span></div>';
       weak.forEach(({ w, s }) => {
-        html += '<div class="learned-word" data-word="' + esc(w.en) + '" style="cursor:pointer;border-color:rgba(245,87,108,0.2)" onclick="openWordDetailByEn(\'' + esc(w.en) + '\')"><div><div class="lw-en">' + esc(w.en) + makeCefrBadge(w) + '</div><div class="lw-tr">' + esc(w.tr) + '</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><span class="lw-acc bad">' + (s.wrong || 0) + '✗</span><span class="lw-meta">' + (s.correct || 0) + '✓</span></div></div>';
+        html += '<div class="learned-word" data-word="' + esc(w.en) + '" style="cursor:pointer;border-color:rgba(245,87,108,0.2)" role="button" tabindex="0"><div><div class="lw-en">' + esc(w.en) + makeCefrBadge(w) + '</div><div class="lw-tr">' + esc(w.tr) + '</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><span class="lw-acc bad">' + (s.wrong || 0) + '✗</span><span class="lw-meta">' + (s.correct || 0) + '✓</span></div></div>';
       });
       html += '</div>';
       container.innerHTML = html;
@@ -2272,7 +2357,7 @@ function renderLearned() {
     recentLearned.slice(0, 10).forEach(w => {
       const ago = formatAgo(Date.now() - w.ts);
       const wObj = WORDS.find(x => x.en === w.en);
-      html += '<div class="learned-word recent" data-word="' + esc(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + esc(w.en) + '\')"><div><div class="lw-en">' + esc(w.en) + (wObj ? makeCefrBadge(wObj) : '') + '</div><div class="lw-tr">' + esc(w.tr) + '</div></div><div class="lw-meta">' + ago + ' ›</div></div>';
+      html += '<div class="learned-word recent" data-word="' + esc(w.en) + '" style="cursor:pointer" role="button" tabindex="0"><div><div class="lw-en">' + esc(w.en) + (wObj ? makeCefrBadge(wObj) : '') + '</div><div class="lw-tr">' + esc(w.tr) + '</div></div><div class="lw-meta">' + ago + ' ›</div></div>';
     });
     html += '</div>';
   }
@@ -2281,7 +2366,7 @@ function renderLearned() {
     struggle.forEach(w => {
       const s = scores[w.en];
       const leechMark = isLeech(w.en) ? '<span class="leech-badge">🐛</span>' : '';
-      html += '<div class="learned-word struggle" data-word="' + esc(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + esc(w.en) + '\')"><div><div class="lw-en">' + esc(w.en) + makeCefrBadge(w) + leechMark + '</div><div class="lw-tr">' + esc(w.tr) + '</div></div><div class="lw-meta gold">' + s.correct + ' ✓ • ' + s.wrong + ' ✗ ›</div></div>';
+      html += '<div class="learned-word struggle" data-word="' + esc(w.en) + '" style="cursor:pointer" role="button" tabindex="0"><div><div class="lw-en">' + esc(w.en) + makeCefrBadge(w) + leechMark + '</div><div class="lw-tr">' + esc(w.tr) + '</div></div><div class="lw-meta gold">' + s.correct + ' ✓ • ' + s.wrong + ' ✗ ›</div></div>';
     });
     html += '</div>';
   }
@@ -2289,7 +2374,7 @@ function renderLearned() {
     html += '<div class="learned-section"><div class="learned-section-title">✨ Hızlıca Öğrendin <span class="badge">' + easy.length + '</span></div>';
     easy.forEach(w => {
       const s = scores[w.en];
-      html += '<div class="learned-word" data-word="' + esc(w.en) + '" style="cursor:pointer" onclick="openWordDetailByEn(\'' + esc(w.en) + '\')"><div><div class="lw-en">' + esc(w.en) + makeCefrBadge(w) + '</div><div class="lw-tr">' + esc(w.tr) + '</div></div><div class="lw-meta">' + s.correct + ' ✓ ›</div></div>';
+      html += '<div class="learned-word" data-word="' + esc(w.en) + '" style="cursor:pointer" role="button" tabindex="0"><div><div class="lw-en">' + esc(w.en) + makeCefrBadge(w) + '</div><div class="lw-tr">' + esc(w.tr) + '</div></div><div class="lw-meta">' + s.correct + ' ✓ ›</div></div>';
     });
     html += '</div>';
   }
@@ -2333,11 +2418,15 @@ function renderCatChips() {
 
   Object.entries(CAT_LABELS).forEach(([cat, label]) => {
     const count = available[cat] || 0;
+    const selected = settings.catFilter.includes(cat);
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'chip' + (settings.catFilter.includes(cat) ? ' active' : '') + (count === 0 ? ' locked' : '');
+    btn.className = 'chip' + (selected ? ' active' : '') + (count === 0 ? ' locked' : '');
     btn.textContent = count === 0 ? label + ' 🔒' : label + ' ' + count;
-    if (count === 0) {
+    btn.setAttribute('aria-pressed', selected ? 'true' : 'false');
+    // A category picked at a higher level and then locked by a level-down must
+    // still be removable; a disabled chip left it stuck in the filter for good.
+    if (count === 0 && !selected) {
       btn.disabled = true;
       btn.title = 'Bu kategorideki kelimeler daha üst seviyede açılıyor';
     } else {
@@ -2345,8 +2434,8 @@ function renderCatChips() {
         const idx = settings.catFilter.indexOf(cat);
         if (idx >= 0) settings.catFilter.splice(idx, 1);
         else settings.catFilter.push(cat);
-        btn.classList.toggle('active');
         saveSettings();
+        renderCatChips();
       };
     }
     wrap.appendChild(btn);
@@ -2374,6 +2463,11 @@ function importData(file) {
   reader.onload = e => {
     try {
       const data = JSON.parse(e.target.result);
+      if (!data || typeof data !== 'object' || Array.isArray(data) || !(data.scores || data.global)) {
+        throw new Error('Bu bir KelimeEdin yedek dosyası değil.');
+      }
+      const when = data.exportedAt ? new Date(data.exportedAt).toLocaleDateString('tr-TR') : 'tarihi bilinmeyen';
+      if (!confirm(when + ' tarihli yedek yüklenecek ve şu anki ilerlemenin yerini alacak. Devam edilsin mi?')) return;
       if (data.scores) scores = data.scores;
       if (data.global) global = data.global;
       if (data.streak) streak = data.streak;
@@ -2383,6 +2477,11 @@ function importData(file) {
       if (data.activity) activity = data.activity;
       if (data.achievements) achievements = data.achievements;
       if (data.notes) notes = data.notes;
+      sanitizeState();
+      // The running session belongs to the old profile; its accuracy would
+      // otherwise decide the restored profile's next level change.
+      session = { idx: 0, correct: 0, wrong: 0, learned: 0, hinted: 0, hintUsed: false, summaryShown: false };
+      retryQueue = [];
       save(); saveSettings(); saveCefrProgress(); saveAchievements(); saveNotes();
       alert('✅ Veri başarıyla yüklendi!');
       // Repaint everything the restore touched; these used to keep showing the
@@ -2403,7 +2502,7 @@ function resetProgress() {
   global = { correct: 0, wrong: 0, learned: 0 };
   streak = { current: 0, lastDay: null };
   recentLearned = [];
-  session = { idx: 0, correct: 0, wrong: 0, learned: 0, hintUsed: false, summaryShown: false };
+  session = { idx: 0, correct: 0, wrong: 0, learned: 0, hinted: 0, hintUsed: false, summaryShown: false };
   // "Tüm ilerlemen silinecek" has to mean all of it. These used to survive a
   // reset, leaving the weekly chart, the badges and the CEFR level untouched —
   // and retryQueue kept serving pre-reset words as the next cards.
@@ -2586,18 +2685,22 @@ function openWordDetail(word) {
     '<div class="modal-section"><h4>Örnek Cümleler</h4>' +
     word.ex.map(ex =>
       '<div class="example-item">' +
-      '<div class="example-en"><button class="ex-speak" onclick="speak(\'' + esc(ex.en.replace(/'/g,"\\'")) + '\',\'en-US\')" type="button"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg></button><span>' + esc(ex.en) + '</span></div>' +
+      '<div class="example-en"><button class="ex-speak" data-say="' + esc(ex.en) + '" type="button" aria-label="Dinle"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg></button><span>' + esc(ex.en) + '</span></div>' +
       '<div class="example-tr">' + esc(ex.tr) + '</div>' +
       '</div>'
     ).join('') + '</div>' +
     '<div class="modal-section"><h4>Hafıza Notu (İpucu)</h4>' +
       '<textarea class="wd-note" id="wd-note-input" placeholder="Bu kelimeyi hatırlamak için bir çağrışım yaz...">' + esc(note) + '</textarea>' +
-      '<button class="btn-row" id="wd-save-note" onclick="saveWordNote(\'' + esc(word.en) + '\')" style="margin-top:8px;width:100%" type="button">💾 Notu Kaydet</button>' +
+      '<button class="btn-row" id="wd-save-note" style="margin-top:8px;width:100%" type="button">💾 Notu Kaydet</button>' +
     '</div>';
+  content.dataset.word = word.en;
   modal.classList.add('show');
 }
 function closeWordDetail() {
   document.getElementById('word-detail-modal').classList.remove('show');
+}
+function closeRecap() {
+  document.getElementById('recap-modal').classList.remove('show');
 }
 function saveWordNote(en) {
   const val = document.getElementById('wd-note-input')?.value || '';
@@ -2713,7 +2816,7 @@ function showWeeklyRecap() {
   content.innerHTML =
     '<div class="modal-header">' +
       '<div class="modal-title">📅 Haftalık Özet</div>' +
-      '<button class="modal-close" onclick="document.getElementById(\'recap-modal\').classList.remove(\'show\')" type="button">×</button>' +
+      '<button class="modal-close" onclick="closeRecap()" type="button">×</button>' +
     '</div>' +
     '<p style="font-size:13px;color:var(--text-dim);margin-bottom:12px">Bu haftanın istatistikleri:</p>' +
     '<div class="recap-grid">' +
@@ -2723,7 +2826,7 @@ function showWeeklyRecap() {
       '<div class="recap-stat"><div class="recap-num" style="color:#4facfe">' + activeDays + '/7</div><div class="recap-label">Aktif Gün</div></div>' +
     '</div>' +
     '<p style="font-size:13px;color:var(--text-dim);text-align:center;margin-bottom:16px">' + msg + '</p>' +
-    '<button class="btn-primary" onclick="document.getElementById(\'recap-modal\').classList.remove(\'show\')" style="width:100%" type="button">Yeni Haftaya →</button>';
+    '<button class="btn-primary" onclick="closeRecap()" style="width:100%" type="button">Yeni Haftaya →</button>';
   modal.classList.add('show');
 }
 
@@ -2793,6 +2896,12 @@ async function init() {
     EN_ANSWERS.add(normalize(w.en));
     answerVariants(w.tr).forEach(v => TR_ANSWERS.add(v));
   });
+  const foldOwners = {};
+  [...EN_ANSWERS, ...TR_ANSWERS].forEach(a => {
+    const f = foldTr(a);
+    (foldOwners[f] = foldOwners[f] || new Set()).add(a);
+  });
+  FOLD_AMBIGUOUS = new Set(Object.keys(foldOwners).filter(f => foldOwners[f].size > 1));
 
   // Always start at A1 — levels must be earned through 75% accuracy
   if (!localStorage.getItem(CEFR_PROGRESS_KEY)) {
@@ -2826,13 +2935,20 @@ async function init() {
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
   try {
-    // Auto-reload when a new SW takes control (skipWaiting already set in sw.js)
+    // On a first visit there is no controller yet, and clients.claim() fires
+    // controllerchange too — that reloaded the app a second after it opened.
+    const hadController = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      window.location.reload();
+      if (!hadController) return;
+      // Reloading mid-session threw the session away. Switch now only if nothing
+      // is in progress; otherwise offer it, and switch at the next new session.
+      if (session.idx === 0 && !answered) { window.location.reload(); return; }
+      pendingReload = true;
+      document.getElementById('update-banner').classList.add('show');
     });
     navigator.serviceWorker.register('sw.js').then(reg => {
-      // Periodically check for updates (every 60s) for long-running sessions
-      setInterval(() => reg.update(), 60000);
+      // Check for updates once a minute while the app is actually on screen
+      setInterval(() => { if (!document.hidden && navigator.onLine) reg.update(); }, 60000);
     }).catch(() => {});
   } catch(e) {}
 }
@@ -2910,6 +3026,13 @@ function initSwipe() {
     if (dx < -threshold) { skipAnswer(); }
     else if (dx > threshold && settings.hintEnabled) { useHint(); }
   }, { passive: true });
+
+  // An interrupted gesture (incoming call, system swipe) gets no touchend — without
+  // this the "Pas"/"İpucu" overlay stayed painted over the card.
+  card.addEventListener('touchcancel', () => {
+    dragging = false;
+    hintLeft.style.opacity = 0; hintRight.style.opacity = 0;
+  }, { passive: true });
 }
 
 // =====================================================================
@@ -2932,7 +3055,9 @@ async function requestNotifPermission() {
   }
 }
 function scheduleStudyReminder() {
-  if (!settings.notifEnabled || Notification.permission !== 'granted') return;
+  // notifEnabled can arrive from a desktop backup restored on an iPhone, where
+  // Safari has no Notification — the ReferenceError aborted the rest of init().
+  if (!settings.notifEnabled || !('Notification' in window) || Notification.permission !== 'granted') return;
   // Check if studied today
   const today = todayKey();
   const todayActivity = activity[today];
@@ -2948,9 +3073,10 @@ function scheduleStudyReminder() {
 function checkNotifBanner() {
   if (!('Notification' in window) || Notification.permission === 'granted' || settings.notifEnabled) return;
   const today = todayKey();
-  const shown = localStorage.getItem('ke-notif-asked');
-  if (shown === today) return;
-  localStorage.setItem('ke-notif-asked', today);
+  try {
+    if (localStorage.getItem('ke-notif-asked') === today) return;
+    localStorage.setItem('ke-notif-asked', today);
+  } catch(e) { return; }
   setTimeout(() => document.getElementById('notif-banner').classList.add('show'), 3000);
 }
 
@@ -2984,14 +3110,46 @@ function bindUI() {
 
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
-    const tag = document.activeElement.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    if (e.key === 'Escape') { closeSettings(); closeWordDetail(); closeRecap(); return; }
+    // Shortcuts belong to the quiz card only. With focus on a button, Enter/Space
+    // used to run the quiz instead of pressing that button, and on the Öğrenilen
+    // and İstatistik tabs Space skipped words on the hidden card instead of scrolling.
+    const el = document.activeElement;
+    if (el && el !== document.body && el.matches('input, textarea, select, button, a, [tabindex]')) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!document.getElementById('page-play').classList.contains('active')) return;
+    if (document.querySelector('.modal-backdrop.show')) return;
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault(); unlockTTS();
       if (answered) showWord(); else checkAnswer();
     }
     if (e.key === 'h' || e.key === 'H') { e.preventDefault(); useHint(); }
-    if (e.key === 'Escape') closeSettings();
+  });
+
+  // Learned-list rows: one delegated listener instead of an inline onclick per row.
+  // The inline form put the word inside a JS string in an HTML attribute, where
+  // esc()'s &#39; decodes back to a quote — any apostrophe (or a crafted backup
+  // file's recentLearned) broke out of the string.
+  const learnedPage = document.getElementById('page-learned');
+  learnedPage.addEventListener('click', e => {
+    const row = e.target.closest('.learned-word[data-word]');
+    if (row) openWordDetailByEn(row.dataset.word);
+  });
+  learnedPage.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const row = e.target.closest('.learned-word[data-word]');
+    if (row) { e.preventDefault(); openWordDetailByEn(row.dataset.word); }
+  });
+  const wdContent = document.getElementById('word-detail-content');
+  wdContent.addEventListener('click', e => {
+    const say = e.target.closest('[data-say]');
+    if (say) speak(say.dataset.say, 'en-US');
+    if (e.target.closest('#wd-save-note')) saveWordNote(wdContent.dataset.word);
+  });
+  ['word-detail-modal', 'recap-modal'].forEach(id => {
+    document.getElementById(id).addEventListener('click', e => {
+      if (e.target.id === id) { closeWordDetail(); closeRecap(); }
+    });
   });
 
   document.getElementById('answer-input').addEventListener('keydown', e => {
@@ -3046,6 +3204,7 @@ function bindUI() {
   document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file').click());
   document.getElementById('import-file').addEventListener('change', e => {
     if (e.target.files[0]) importData(e.target.files[0]);
+    e.target.value = '';
   });
   document.getElementById('reset-btn').addEventListener('click', resetProgress);
 

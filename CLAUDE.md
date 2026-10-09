@@ -9,7 +9,7 @@ Türk kullanıcılar için İngilizce kelime öğreten PWA. Build step yok, bağ
 | **Kelime** | 1100 (her biri 3 örnek cümleli → 3300 cümle) |
 | **Teknoloji** | Vanilla JS, tek `<script>` bloğu, sıfır bağımlılık |
 
-> Bu dosya `802c74f` commit'indeki koda göre yazıldı. Kodu değiştirdiğinde burayı da güncelle — bu rehberin bir önceki sürümü koddan aylarca geride kalmıştı ve yanlış yönlendiriyordu.
+> Bu dosya `802c74f` commit'indeki koda göre yazıldı, 8 Ekim 2026 denetim düzeltmeleriyle güncellendi. Kodu değiştirdiğinde burayı da güncelle — bu rehberin bir önceki sürümü koddan aylarca geride kalmıştı ve yanlış yönlendiriyordu.
 
 ---
 
@@ -20,6 +20,9 @@ index.html                    148 KB  ← Uygulamanın tamamı (HTML + CSS + JS)
 sw.js                           1 KB  ← Service worker (önbellek)
 data/words.json               316 KB  ← Kelime KAYNAĞI — düzenlenecek dosya bu
 data/words.dat                116 KB  ← Üretilen dosya — tarayıcının yüklediği bu
+manifest.webmanifest                  ← PWA manifest (ikonlar burada tanımlı)
+icon-192.png / icon-512.png           ← Manifest ikonları (+ icon-maskable-512.png)
+apple-touch-icon.png                  ← iOS ana ekran ikonu — iOS SVG kabul etmez, PNG şart
 .github/workflows/deploy.yml          ← main'e push → GitHub Pages deploy
 CLAUDE.md                             ← Bu dosya
 ```
@@ -94,24 +97,28 @@ Tarayıcı tarafı `DecompressionStream('gzip')` kullanır; desteklenmezse `word
 Zincir: `normalize()` → `answerVariants()` → `fuzzyEqual()` → `ALT_MEANINGS` / `TR_TO_EN`
 
 ```js
-normalize(s)  // küçük harf, baş/son boşluk, noktalama sil, çoklu boşluk tekle
+normalize(s)  // Türkçe küçük harf (İ→i, I→ı), baş/son boşluk, noktalama sil, çoklu boşluk tekle
+foldTr(s)     // ç→c ğ→g ı→i ö→o ş→s ü→u — ASCII toleransı için
 ```
+
+> Cevap metninde **asla düz `toLowerCase()` kullanma.** JS `'İ'.toLowerCase()` → `i` + U+0307 döndürür, `'I'`'yı da `ı` yerine `i` yapar. Bu yüzden `İnek`, caps lock'la `KADIN` gibi doğru cevaplar reddediliyordu (1100 kelimede 103–909 vaka).
 
 **`answerVariants(expected)`** — kabul edilen tüm yazımlar: cevabın tamamı, `/` veya `,` ile ayrılmış her parça, ve bunların parantezsiz halleri. `"ay (takvim)"` → `{"ay (takvim)", "ay"}`.
 
 **`fuzzyEqual(user, expected, lang)`** — sırayla:
 
 1. Birebir eşitse → **doğru**
-2. Türkçe mastar kuralı: `"gel"` ↔ `"gelmek"` (`-mek`/`-mak` kökü) → **doğru**
+1b. **ASCII toleransı**: `foldTr(user) === foldTr(expected)` → **doğru** (`cocuk` → `çocuk`, `ıce` → `ice`). İstisna: sözlükte aynı ASCII haline düşen iki farklı cevap varsa (`FOLD_AMBIGUOUS`, şu an sadece `aşk`/`ask`) o çift için tolerans kapalı.
+2. Türkçe mastar kuralı (katlanmış halde de çalışır: `gulumse` → `gülümsemek`): `"gel"` ↔ `"gelmek"` (`-mek`/`-mak` kökü) → **doğru**
 3. **Sözlük kontrolü**: yazılan şey sözlükte başka bir kelimenin cevabıysa → **yanlış**
 4. Sonek toleransı: ortak önek ≥ 4 karakter **ve** fark sadece kelime **sonunda** (≤1 karakter, uzun kelimelerde ≤2) → doğru
 
 3. adım kritik: `hear`/`heart`, `bread`/`break`, `tarif`/`tarih`, `asla`/`aslan` gibi gerçekten farklı kelimeler birbirinin yazım hatası sayılmamalı. Bu kontrol `EN_ANSWERS` / `TR_ANSWERS` set'lerini kullanır, ikisi de kelimeler yüklenince kurulur.
 
-Kabul edilir: `tereyağ` → `tereyağı`, `gel` → `gelmek`, `ay` → `ay (takvim)`
+Kabul edilir: `tereyağ` → `tereyağı`, `gel` → `gelmek`, `ay` → `ay (takvim)`, `İNEK` → `inek`, `ogrenci` → `öğrenci`
 Reddedilir: `merhabba` → `merhaba` (ortada hata), `takvim` → `ay (takvim)` (sadece açıklama), `hear` → `heart`
 
-**`ALT_MEANINGS`** (36 grup) — aynı kelimenin farklı anlamları / eş anlamlılar:
+**`ALT_MEANINGS`** (35 grup) — aynı kelimenin farklı anlamları / eş anlamlılar:
 ```js
 "market": [{"tr": "pazar (ekonomi)"}, {"tr": "pazar"}]
 "home":   [{"en": "house", "tr": "ev"}]
@@ -174,6 +181,8 @@ LEVEL_DOWN_THRESHOLD = 0.50   // < %50 → bir alt seviyeye düşülür
 
 Seans **sonunda** `checkLevelChange()` ile bir kez değerlendirilir. Yeni kullanıcı daima A1'den başlar.
 
+Seviye doğruluğu `levelAccuracy()` = `(correct − hinted) / toplam`. **İpuçlu doğrular sayılmaz** — ipucu varsayılan açık olduğu için her kartta ipucu alan kullanıcı %100 ile seviye atlıyordu. Özet ekranındaki yüzde ise ipuçlu dahil gösterilir; fark varsa özet bunu söyler.
+
 > `showSessionSummary()` `session.summaryShown` ile korunuyor. Bu koruma olmadan özet ekranında Space/Enter'a her basış `checkLevelChange()`'i yeniden çalıştırıp seviye atlatıyordu (5 basış = A2'den C2'ye).
 
 ---
@@ -197,6 +206,8 @@ Seans **sonunda** `checkLevelChange()` ile bir kez değerlendirilir. Yeni kullan
 - Her anahtar `loadJSON()` ile **ayrı ayrı** yüklenir. Tek bir `try/catch` kullanma — bozuk bir kayıt sonraki tüm anahtarları sessizce sıfırlıyordu.
 - Yükleme sonrası şekil doğrulaması yapılır. `achievements`, `scores`, `notes`, `activity` **düz nesnedir**; `Array.isArray` ile kontrol etme, hepsini siler.
 - `global.learned` her açılışta `struggleConquered` bayraklarından yeniden sayılır (ayrı sayaç olduğu için kayabiliyor).
+- Doğrulama `sanitizeState()` içinde — `loadAll()` **ve** `importData()` ikisi de çağırır. İçe aktarılan yedek localStorage kadar güvenilmezdir; eskiden hiçbir kontrolden geçmeden kaydediliyordu.
+- **Salt okuma için `getScore()` kullanma** — kayıt oluşturur. `pickNext()` havuzun tamamı için çağırıp 1100'e kadar boş kayıt yazıyordu; şimdi `scores[en] || EMPTY_SCORE`. Eski boş kayıtlar açılışta temizlenir.
 - Veri şekli değişirse anahtar versiyonunu artır (`v4` → `v5`), yoksa eski veri bozulur.
 - Gün anahtarı `"2026-9-4"` biçiminde (sıfır doldurmasız). **`new Date(key)` ile ayrıştırma** — ISO-8601 değil, Safari `Invalid Date` döndürebilir. `dayKeyToTime()` kullan.
 
@@ -231,7 +242,8 @@ month                          [🔊]
 
 ### Etkileşim
 - **Enter** → kontrol et; cevap verilmişse sonraki kelime
-- **Space** → sonraki kelime · **H** → ipucu · **Esc** → ayarları kapat
+- **Space** → sonraki kelime · **H** → ipucu · **Esc** → açık modalı kapat
+- Kısayollar yalnızca **Öğren** sekmesinde, modal kapalıyken ve odak bir butonda/input'ta değilken çalışır. Eskiden butona odaklıyken Enter butonu değil quiz'i tetikliyor, Öğrenilen sekmesinde Space kaydırma yerine görünmeyen karttaki kelimeyi atlatıyordu.
 - **Sola kaydır** → Pas · **Sağa kaydır** → İpucu (dikey ağırlıklı hareketler yok sayılır)
 
 > Input'un Enter handler'ı `e.stopPropagation()` çağırır. Çağırmazsa olay `document`'a ulaşır; `checkAnswer()` input'u blur ettiği için oradaki "input'ta mıyız?" koruması devre dışı kalır ve aynı tuşla sonraki kelimeye atlanır.
@@ -257,13 +269,18 @@ Animasyonların tamamı CSS `@keyframes` — JS animasyon yok.
 
 ## 7. PWA ve Service Worker
 
-`sw.js` cache-first: `./`, `./index.html`, `./data/words.dat`.
+`sw.js` cache-first: `./`, `./index.html`, `./data/words.dat`, manifest ve ikonlar. Eşleme `ignoreSearch` ile yapılır (`./?source=pwa` çevrimdışı açılır); çevrimdışı önbellek ıskasında sayfa istekleri `index.html`'e düşer.
 
 > ### 🚨 Her deploy'da cache versiyonunu artır
 > ```js
-> const CACHE = 'kelimeedin-v20';   // → v21
+> const CACHE = 'kelimeedin-v21';   // → v22
 > ```
-> Artırmazsan kullanıcılar eski sürümü görmeye devam eder. Yeni SW devreye girince sayfa otomatik yenilenir (`controllerchange`).
+> Artırmazsan kullanıcılar eski sürümü görmeye devam eder.
+
+Yeni SW devreye girince (`controllerchange`):
+- **İlk ziyarette hiçbir şey yapılmaz** — `clients.claim()` da bu olayı tetikler; eskiden uygulama açılıştan bir saniye sonra kendini yeniliyordu.
+- Seans başındaysa (`session.idx === 0`, cevap yok) hemen yenilenir.
+- Seans ortasındaysa `#update-banner` gösterilir ve `pendingReload` kurulur; kullanıcı butona basınca ya da bir sonraki `startNewSession()`'da yenilenir. Seans ortası yenileme seansı siliyordu.
 
 Service worker `init()` içinde **`showWord()`'den önce** kaydedilir. Sonda olduğu zaman, başarısız bir `words.dat` yüklemesi onu da devre dışı bırakıyor ve uygulama kalıcı olarak çevrimdışı çalışamaz hale geliyordu.
 
@@ -309,6 +326,9 @@ npx eslint /tmp/app.js
 - [ ] EN→TR ve TR→EN yönleri
 - [ ] Enter: kontrol ediyor, kelimeyi atlamıyor
 - [ ] `ay` → `ay (takvim)` kabul, `hear` → `heart` **ret**, `merhabba` → `merhaba` **ret**
+- [ ] `İNEK`, caps lock'la `KADIN`, ASCII `cocuk` kabul; `ask` → `aşk` **ret** (belirsiz çift)
+- [ ] Öğrenilen sekmesinde Space sayfayı kaydırıyor, quiz'i ilerletmiyor
+- [ ] İlk ziyarette sayfa kendini yenilemiyor; seans ortası güncellemede banner çıkıyor
 - [ ] `gel` → `gelmek` kabul
 - [ ] Eş anlamlılar (`ev` → home/house)
 - [ ] Seviye atlama: seans sonunda **bir kez** (özet ekranında Space'e basınca tekrar etmemeli)
@@ -323,10 +343,9 @@ npx eslint /tmp/app.js
 
 ## 10. Bilinen Sorunlar
 
-1. **13 kelime sözlükte iki kez geçiyor** — `brush`, `work`, `clean`, `dirty`, `answer`, `trust`, `smile`, `iron`, `water`, `garden`, `market`, `dry` (3 kez) farklı anlamlarla. Skorlar sadece `en` ile anahtarlandığı için bir anlamı öğrenmek diğerini de öğrenilmiş sayıyor, kelime detayında hep ilk anlam açılıyor, kategori çubukları fazla sayıyor. **Düzgün çözüm** ya veriyi birleştirmek (`"fırça/fırçalamak"`) ya da skor anahtarını `en|tr` yapmak — ikincisi mevcut kullanıcı verisi için taşıma gerektirir.
-2. **`onclick` içine gömülen kelimeler** — `openWordDetailByEn('...')` HTML-escape'i JS string bağlamında kullanıyor. Şu an veride kesme işaretli kelime olmadığı için sorun çıkmıyor; `o'clock` veya `Türkiye'de` eklendiği gün kırılır.
-3. **iOS Safari TTS** — ilk kullanıcı etkileşiminden önce ses çalmayabilir (`unlockTTS()` bunu hafifletiyor).
-4. **Uzun TR cevaplar** — `"sahip olmak"` gibi karşılıkları mobilde yazmak zor. Çoktan seçmeli mod bunu çözer.
+1. **11 kelime sözlükte iki kez geçiyor** — `brush`, `work`, `clean`, `dirty`, `answer`, `trust`, `smile`, `iron`, `water`, `market`, `dry` farklı anlamlarla. (`dry`="çamaşır" aslında *laundry*, `garden`="bahçe yapmak" aslında *gardening* idi — veri hatasıydı, düzeltildi.) Skorlar sadece `en` ile anahtarlandığı için bir anlamı öğrenmek diğerini de öğrenilmiş sayıyor, kelime detayında hep ilk anlam açılıyor, kategori çubukları fazla sayıyor. **Düzgün çözüm** ya veriyi birleştirmek (`"fırça/fırçalamak"`) ya da skor anahtarını `en|tr` yapmak — ikincisi mevcut kullanıcı verisi için taşıma gerektirir.
+2. **iOS Safari TTS** — ilk kullanıcı etkileşiminden önce ses çalmayabilir (`unlockTTS()` bunu hafifletiyor).
+3. **Uzun TR cevaplar** — `"sahip olmak"` gibi karşılıkları mobilde yazmak zor. Çoktan seçmeli mod bunu çözer.
 
 ---
 
@@ -336,6 +355,7 @@ npx eslint /tmp/app.js
 - **`esc()` fonksiyonunu silme veya `escape()` diye adlandırma.** Yerleşik `escape()` yüzde kodlaması yapar ve Türkçeyi bozar (`doğum günü` → `do%u011Fum%20g%FCn%FC`).
 - **`pickNext()`'te rulet seçimini koru** (Bölüm 3.2'deki uyarı).
 - **Fonksiyon içinde `addEventListener` çağırma** — `bindUI()` ve `initSwipe()` bir kez çalışır; tekrar çağrılan bir fonksiyona listener koyarsan birikir.
+- **innerHTML'e satır içi `onclick="f('...')"` + veri gömme.** `esc()`'in `&#39;`'u attribute içinde tekrar `'`'ya çözülür ve JS string'inden kaçar (içe aktarılan yedekle kod çalıştırılabiliyordu). `data-*` attribute + `bindUI()`'daki delegasyonu kullan (`.learned-word[data-word]`, `[data-say]`).
 - **localStorage şekil kontrollerinde `Array.isArray` kullanma** (Bölüm 4).
 - `retryQueue` yeni seansta temizlenir; seans sonuna yakın verilen yanlışların retry'ı atlanır (kelime zaten `dueAt` üzerinden geri gelir).
 
@@ -344,7 +364,7 @@ npx eslint /tmp/app.js
 ## 12. Yol Haritası
 
 **Öncelikli**
-- [ ] Yinelenen 13 kelimeyi çöz (Bölüm 10.1)
+- [ ] Yinelenen 11 kelimeyi çöz (Bölüm 10.1)
 - [ ] Çoktan seçmeli mod — uzun TR cevapları mobilde yazma sorununu çözer
 
 **Orta vadeli**
