@@ -1,0 +1,22 @@
+{
+  "name": "kelimeedin",
+  "private": true,
+  "description": "KelimeEdin — iOS paketleme (Capacitor). Web uygulamasının kendisi bağımlılıksızdır; bu dosya yalnızca native kabuk içindir.",
+  "type": "module",
+  "scripts": {
+    "www": "node scripts/copy-www.mjs",
+    "ios:sync": "npm run www && cap sync ios",
+    "ios:open": "cap open ios",
+    "ios:run": "npm run www && cap run ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "8.5.3",
+    "@capacitor/filesystem": "8.1.4",
+    "@capacitor/ios": "8.5.3",
+    "@capacitor/keyboard": "8.0.6",
+    "@capacitor/share": "8.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "appId": "com.oknkeles.kelimeedin",
+  "appName": "KelimeEdin",
+  "webDir": "www",
+  "backgroundColor": "#0a0818",
+  "ios": {
+    "backgroundColor": "#0a0818",
+    "contentInset": "never",
+    "scheme": "KelimeEdin"
+  },
+  "plugins": {
+    "Keyboard": {
+      "resize": "none"
+    }
+  }
+}

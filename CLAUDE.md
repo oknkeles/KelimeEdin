@@ -21,9 +21,13 @@ sw.js                           1 KB  ← Service worker (önbellek)
 data/words.json               316 KB  ← Kelime KAYNAĞI — düzenlenecek dosya bu
 data/words.dat                116 KB  ← Üretilen dosya — tarayıcının yüklediği bu
 manifest.webmanifest                  ← PWA manifest (ikonlar burada tanımlı)
-icon-192.png / icon-512.png           ← Manifest ikonları (+ icon-maskable-512.png)
+logo.svg                              ← Logo kaynağı ("Sayfa K": omurga + açılan iki sayfa = K, altın nokta = ı→i). Tüm PNG ikonlar buradan üretilir
+icon-192.png / icon-512.png           ← Manifest ikonları (+ icon-maskable-512.png: içerik %80 güvenli alanda)
 apple-touch-icon.png                  ← iOS ana ekran ikonu — iOS SVG kabul etmez, PNG şart
 .github/workflows/deploy.yml          ← main'e push → GitHub Pages deploy
+package.json, capacitor.config.json   ← Yalnızca iOS kabuğu (Capacitor) — bkz. Bölüm 13
+scripts/copy-www.mjs                  ← Web dosyalarını www/'ye kopyalar (build değil, kopya)
+ios/                                  ← Xcode projesi (SPM, CocoaPods yok)
 CLAUDE.md                             ← Bu dosya
 ```
 
@@ -229,8 +233,8 @@ Seviye doğruluğu `levelAccuracy()` = `(correct − hinted) / toplam`. **İpuç
 month                          [🔊]
 / Next month is my birthday. / ← ipucu cümlesi (ilk örnek)
 ●●○●  3✓ 1✗                    ← kelime geçmişi noktaları
-[cevabını yaz...]
-[Kontrol Et]  [💡 İpucu]  [⏭ Pas]
+[cevabını yaz...          (➜)]   ← kontrol butonu input'un İÇİNDE
+[💡 İpucu]  [Pas ⏭]
 ↓
 [✓ Doğru / ✗ Yanlış / ⭐ ÖĞRENİLDİ!]
 [😎 Kolay | 🙂 Normal | 😤 Zor]   ← manuel SR ayarı
@@ -245,6 +249,8 @@ month                          [🔊]
 - **Space** → sonraki kelime · **H** → ipucu · **Esc** → açık modalı kapat
 - Kısayollar yalnızca **Öğren** sekmesinde, modal kapalıyken ve odak bir butonda/input'ta değilken çalışır. Eskiden butona odaklıyken Enter butonu değil quiz'i tetikliyor, Öğrenilen sekmesinde Space kaydırma yerine görünmeyen karttaki kelimeyi atlatıyordu.
 - **Sola kaydır** → Pas · **Sağa kaydır** → İpucu (dikey ağırlıklı hareketler yok sayılır)
+
+> **Kontrol butonu (`#check-btn`) input'un içindedir** (`.answer-wrap > .inline-check`). Altta dururken klavye açıkken klavyenin arkasında kalıyordu; kullanıcı önce klavyeyi kapatıp sonra basmak zorundaydı. Input `enterkeyhint="done"` → iOS klavyesinde mavi ✓ tuşu da kontrol eder. Boşken buton soluk (`:placeholder-shown`), cevap verilince gizli (`:disabled`).
 
 > Input'un Enter handler'ı `e.stopPropagation()` çağırır. Çağırmazsa olay `document`'a ulaşır; `checkAnswer()` input'u blur ettiği için oradaki "input'ta mıyız?" koruması devre dışı kalır ve aynı tuşla sonraki kelimeye atlanır.
 
@@ -281,7 +287,7 @@ Animasyonların tamamı CSS `@keyframes` — JS animasyon yok.
 
 > ### 🚨 Her deploy'da cache versiyonunu artır
 > ```js
-> const CACHE = 'kelimeedin-v22';   // → v23
+> const CACHE = 'kelimeedin-v23';   // → v24
 > ```
 > Artırmazsan kullanıcılar eski sürümü görmeye devam eder.
 
@@ -359,7 +365,7 @@ npx eslint /tmp/app.js
 
 ## 11. Kod Değiştirirken Dikkat
 
-- **Tek dosya yaklaşımı korunmalı.** `index.html` içinde tek bir `<script>` var; bağımlılık veya build step ekleme.
+- **Tek dosya yaklaşımı korunmalı.** `index.html` içinde tek bir `<script>` var; web uygulamasına bağımlılık veya build step ekleme. `package.json` yalnızca iOS kabuğu içindir — web tarafı ondan hiçbir şey import etmez.
 - **`esc()` fonksiyonunu silme veya `escape()` diye adlandırma.** Yerleşik `escape()` yüzde kodlaması yapar ve Türkçeyi bozar (`doğum günü` → `do%u011Fum%20g%FCn%FC`).
 - **`pickNext()`'te rulet seçimini koru** (Bölüm 3.2'deki uyarı).
 - **Fonksiyon içinde `addEventListener` çağırma** — `bindUI()` ve `initSwipe()` bir kez çalışır; tekrar çağrılan bir fonksiyona listener koyarsan birikir.
@@ -383,3 +389,26 @@ npx eslint /tmp/app.js
 **Uzun vadeli**
 - [ ] Hesap + cihazlar arası senkronizasyon (şu an her şey localStorage'da — cihaz değişince yedek dosyası şart)
 - [ ] Capacitor ile App Store / Play Store paketleme
+
+---
+
+## 13. iOS Uygulaması (Capacitor 8)
+
+Aynı web uygulaması native bir iOS kabuğunun içinde çalışır. Bundle ID `com.oknkeles.kelimeedin`, iOS 15+, **yalnızca iPhone**, yalnızca dikey, koyu mod sabit (`UIUserInterfaceStyle = Dark`), dil `tr` (JS `confirm()` butonları "İptal/Tamam" çıkar).
+
+```bash
+npm install            # bir kez
+npm run ios:sync       # web dosyası değişince: www/'ye kopyala + ios/'a eşitle
+npm run ios:open       # Xcode'da aç → ▶ ile simülatörde çalıştır
+```
+
+- **`webDir` = `www/`, repo kökü değil** — kök olsaydı `node_modules/` ve `ios/` uygulamanın içine kopyalanırdı. Pakete girecek dosyalar `scripts/copy-www.mjs`'teki `FILES` listesinde; yeni bir web dosyası eklersen oraya da ekle.
+- `data/words.json` da paketlenir: iOS 15–16.3'te `DecompressionStream` yok, yükleyici JSON'a düşer.
+- `www/`, `node_modules/`, `ios/App/App/public/` git dışı. `ios/` (Xcode projesi) git'te.
+- Uygulama ikonu `ios/App/App/Assets.xcassets/AppIcon.appiconset/` — 1024², **alfa kanalı yok** (App Store reddeder). Açılış ekranı `Splash.imageset`.
+- WKWebView'da service worker, Web Notification, SpeechRecognition ve `navigator.vibrate` yok — kod bunları zaten özellik kontrolüyle atlıyor. Dosyalar yerel olduğu için uygulama zaten çevrimdışı çalışır.
+- Safari PWA'sındaki ilerleme native uygulamaya **taşınmaz** (farklı köken). Geçiş: PWA'da Yedekle → uygulamada Geri Yükle.
+- **WKWebView `<a download>`'ı yok sayar** — Yedekle butonu sessizce hiçbir şey yapmıyordu. `shareFileNative()` dosyayı `@capacitor/filesystem` ile önbelleğe yazıp `@capacitor/share` ile iOS paylaşım sayfasını açar ("Dosyalara Kaydet", AirDrop). Paylaşım kartı (`downloadBlob`) da aynı yoldan geçer. Web'de `window.Capacitor` yoktur, eski indirme yolu çalışır. Eklentiler bundler'sız `Capacitor.Plugins.X` üzerinden çağrılır.
+- **Google Fonts stil dosyası render'ı bloklamaz** (`rel=preload` + `onload`). Bloklasaydı uygulama ilk açılışta, zayıf bağlantıda font inene kadar boş ekran gösterirdi. Fontlar internetten gelir; çevrimdışıyken sistem fontları kullanılır.
+- `@capacitor/keyboard`: klavyenin üstündeki ˄ ˅ ✓ form çubuğu gizli (`setAccessoryBarVisible`), `resize: "none"` — webview küçülmez; küçülseydi yüzen sekme çubuğu klavyenin üstüne binerdi.
+- Simülatörde açılıştan ilk içeriğe ~1,6 sn (ölçüldü). Derleme: `ios/App/App.xcodeproj`, şema `App`.
