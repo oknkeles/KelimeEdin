@@ -262,8 +262,16 @@ month                          [🔊]
 --gradient-gold: #ffd700 → #ff8c00
 ```
 
-Fontlar: **DM Sans** (arayüz), **Fraunces** (başlıklar, kelimeler, sayılar).
+Fontlar: arayüzde Apple cihazlarda **SF Pro** (sistem fontu), diğerlerinde **DM Sans**; **Fraunces** (başlıklar, kelimeler, sayılar) `opsz` + yumuşak serif `SOFT` ekseniyle.
 Animasyonların tamamı CSS `@keyframes` — JS animasyon yok.
+
+### "Gece Camı" katmanı (Liquid Glass)
+`<style>`'ın sonundaki `TASARIM — "Gece Camı"` bloğu, üstteki temel stilleri **yalnızca ezerek** iOS 26 görünümü verir. Bloğu silmek eski görünüme döner; JS sınıf/ID'lerine dokunmaz.
+- Yüzen cam sekme çubuğu; seçili sekmenin altındaki cam damla `:has()` ile kayar (JS yok)
+- Yapışkan başlık, kenarı eriyen bulanıklık. **`html, body { overflow-x: clip }` şart** — `hidden` kaydırma kabı oluşturup `sticky`'yi bozar
+- Pencereler alttan kayan iOS sayfası (tutamaçlı), güncelleme bildirimi Dynamic Island kapsülü
+- `backdrop-filter` yalnızca büyük yüzeylerde (kart, sekme çubuğu, başlık, sayfa); uzun listeler bulanıksız "hafif cam" — iPhone'da performans için
+- Birincil buton gradyanı `--cta` (beyaz yazı ~4.3:1); `prefers-reduced-transparency` ve `prefers-reduced-motion` destekli
 
 ---
 
@@ -273,7 +281,7 @@ Animasyonların tamamı CSS `@keyframes` — JS animasyon yok.
 
 > ### 🚨 Her deploy'da cache versiyonunu artır
 > ```js
-> const CACHE = 'kelimeedin-v21';   // → v22
+> const CACHE = 'kelimeedin-v22';   // → v23
 > ```
 > Artırmazsan kullanıcılar eski sürümü görmeye devam eder.
 

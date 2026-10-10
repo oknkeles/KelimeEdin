@@ -24,7 +24,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght,SOFT@0,9..144,500..900,0..100;1,9..144,400..600,0..100&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #0a0818;
@@ -840,6 +840,396 @@ input.answer-input:focus { border-color: var(--accent2); background: rgba(255,25
   outline-offset: 2px;
 }
 button:focus:not(:focus-visible) { outline: none; }
+
+/* =====================================================================
+   TASARIM — "Gece Camı"
+   Apple'ın Liquid Glass diline göre: yüzen cam sekme çubuğu, cam kart,
+   iOS sayfası (sheet) olarak açılan pencereler, Dynamic Island güncelleme
+   bildirimi, yavaşça akan aurora arka plan. Yalnızca görünüm — JS'in
+   kullandığı sınıf/ID'lere dokunmaz. Bu bloğu silmek eski görünüme döndürür.
+   ===================================================================== */
+:root {
+  --ui-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'DM Sans', system-ui, sans-serif;
+  --display-font: 'Fraunces', 'New York', Georgia, serif;
+  --glass-fill: rgba(255,255,255,0.06);
+  --glass-line: rgba(255,255,255,0.10);
+  --glass-hi: inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(255,255,255,0.03);
+  --glass-shadow: 0 24px 48px -24px rgba(0,0,0,0.75), 0 2px 6px rgba(0,0,0,0.22);
+  --glass-blur: blur(28px) saturate(170%);
+  --spring: cubic-bezier(.34,1.56,.64,1);
+  --ease-out: cubic-bezier(.22,1,.36,1);
+  /* Marka gradyanı, beyaz yazı okunacak kadar koyulaştırılmış (2.0:1 → ~4.3:1) */
+  --cta: linear-gradient(135deg, #bd36ca 0%, #de3b65 100%);
+  --cta-2: linear-gradient(135deg, #5b6cf0 0%, #764ba2 100%);
+  --r-xl: 30px; --r-lg: 22px; --r-md: 16px;
+}
+html, body { font-family: var(--ui-font); letter-spacing: -0.005em; }
+/* hidden bir kaydırma kabı oluşturup yapışkan başlığı bozuyordu; clip oluşturmaz */
+html, body { overflow-x: clip; }
+::selection { background: rgba(255,95,126,0.35); }
+
+/* Fraunces'in yumuşak serif ekseni — kelimeler daha sıcak, daha "kitap" */
+.logo, .word-display, .result-answer, .session-summary h3, .section-title, .modal-title,
+.stat-num, .mini-stat-num, .summary-stat-num, .lw-en, .hw-en, .learned-banner h3,
+.empty-state h3, .goal-ring-num, .goal-ring-title, .wd-score-num, .recap-num,
+.levelup-card h4, .leveldown-card h4, .learned-section-title {
+  font-variation-settings: "SOFT" 60;
+}
+
+/* --- Arka plan: canlı aurora + ince film greni --- */
+body::before {
+  inset: -25vmax;
+  background:
+    radial-gradient(38vmax 34vmax at 22% 30%, rgba(240,72,140,0.24), transparent 62%),
+    radial-gradient(44vmax 40vmax at 78% 22%, rgba(118,75,162,0.36), transparent 64%),
+    radial-gradient(46vmax 40vmax at 62% 82%, rgba(79,172,254,0.17), transparent 62%),
+    radial-gradient(30vmax 30vmax at 12% 88%, rgba(67,233,123,0.07), transparent 60%);
+  animation: aurora 34s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes aurora {
+  0%   { transform: translate3d(0,0,0) rotate(0deg) scale(1); }
+  50%  { transform: translate3d(4vmax,-3vmax,0) rotate(7deg) scale(1.08); }
+  100% { transform: translate3d(-3vmax,2vmax,0) rotate(-5deg) scale(1.03); }
+}
+body::after {
+  content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  opacity: 0.05; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* --- Başlık: kaydırınca içeriğin altından geçtiği, kenarı eriyen cam --- */
+.app { padding-top: 0; }
+header {
+  position: sticky; top: 0; z-index: 40; isolation: isolate;
+  padding: calc(10px + var(--safe-top)) 18px 12px;
+}
+header::before {
+  content: ''; position: absolute; z-index: -1; top: 0; bottom: -18px;
+  left: 50%; width: 100vw; transform: translateX(-50%); pointer-events: none;
+  background: linear-gradient(to bottom, rgba(10,8,24,0.80), rgba(10,8,24,0.30) 72%, rgba(10,8,24,0));
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
+  mask-image: linear-gradient(to bottom, #000 55%, transparent);
+}
+.logo { font-size: 24px; letter-spacing: -0.03em; }
+.streak {
+  padding: 5px 10px; font-variant-numeric: tabular-nums; color: #ffb340;
+  background: linear-gradient(135deg, rgba(255,149,0,0.22), rgba(255,69,0,0.07));
+  border-color: rgba(255,159,10,0.32);
+  box-shadow: var(--glass-hi), 0 0 18px -4px rgba(255,140,0,0.5);
+}
+.icon-btn {
+  width: 38px; height: 38px; color: var(--text);
+  background: var(--glass-fill); border-color: var(--glass-line); box-shadow: var(--glass-hi);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  transition: transform .45s var(--spring), background .2s;
+}
+.icon-btn svg { width: 18px; height: 18px; }
+
+/* --- Seans çubuğu + CEFR yolu --- */
+.session-bar { font-size: 12px; letter-spacing: 0; font-variant-numeric: tabular-nums; margin: 2px 0 12px; }
+.session-progress { height: 6px; border-radius: 99px; background: rgba(255,255,255,0.07); box-shadow: inset 0 1px 2px rgba(0,0,0,0.35); }
+.session-progress-fill {
+  border-radius: 99px; background: linear-gradient(90deg, #bd36ca, #ff5f7e, #ffb36b);
+  box-shadow: 0 0 12px rgba(255,95,126,0.6); transition: width .6s var(--spring);
+}
+.cefr-roadmap { gap: 6px; padding: 2px 2px 14px; }
+.cefr-rm-chip { padding: 6px 12px; letter-spacing: 0.04em; border-width: 1px; box-shadow: var(--glass-hi); }
+.cefr-rm-chip.locked { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.07); }
+.cefr-rm-chip.current { box-shadow: var(--glass-hi), 0 0 0 3px rgba(79,172,254,0.12), 0 0 18px rgba(79,172,254,0.35); }
+.cefr-rm-arrow { opacity: 0.5; font-size: 9px; }
+
+/* --- Kelime kartı: kahraman cam yüzey, ışığı yakalayan kenar --- */
+.card {
+  border-radius: var(--r-xl); padding: 22px 20px 20px;
+  background:
+    radial-gradient(120% 70% at 50% -10%, rgba(240,147,251,0.13), transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.03));
+  border: 1px solid rgba(255,255,255,0.06);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-hi), var(--glass-shadow);
+}
+.card::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(140deg, rgba(255,255,255,0.40), rgba(255,255,255,0.06) 28%, rgba(255,255,255,0) 55%, rgba(255,255,255,0.14));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.swipe-hint { border-radius: var(--r-xl); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+
+/* Kategori emojisi: süzülen cam küre */
+.cat-emoji {
+  display: flex; align-items: center; justify-content: center;
+  width: 76px; height: 76px; margin: 0 auto 14px; font-size: 40px; border-radius: 50%;
+  background: radial-gradient(circle at 32% 26%, rgba(255,255,255,0.24), rgba(255,255,255,0.05) 46%, rgba(245,87,108,0.10) 100%);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.35), inset 0 -10px 18px rgba(118,75,162,0.28), 0 14px 30px -10px rgba(245,87,108,0.5);
+  filter: none; animation: orbFloat 6s ease-in-out infinite;
+}
+@keyframes orbFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.prompt-direction { padding: 5px 11px; font-size: 10.5px; letter-spacing: 0.08em; box-shadow: var(--glass-hi); }
+.cefr-badge { box-shadow: var(--glass-hi); }
+.word-row { margin: 8px 0 6px; }
+.word-display {
+  font-size: 40px; line-height: 1.04; letter-spacing: -0.025em; color: #fff;
+  text-shadow: 0 0 34px rgba(240,147,251,0.28);
+}
+.hint-sentence {
+  font-family: var(--display-font); font-style: italic; font-weight: 400;
+  font-size: 15.5px; letter-spacing: 0; color: rgba(232,228,240,0.62); margin-bottom: 14px;
+}
+.speak-btn {
+  width: 46px; height: 46px; background: var(--glass-fill); border-color: var(--glass-line);
+  box-shadow: var(--glass-hi); transition: transform .45s var(--spring), background .2s;
+}
+.speak-btn svg { width: 19px; height: 19px; }
+.wh-dot { width: 8px; height: 8px; box-shadow: 0 0 6px currentColor; }
+.wh-dot.ok { color: rgba(67,233,123,0.6); } .wh-dot.err { color: rgba(245,87,108,0.6); }
+
+/* --- Cevap alanı ve butonlar: iOS kapsülleri, yaylı basma hissi --- */
+input.answer-input {
+  padding: 16px 18px; font-size: 18px; font-weight: 500; border-radius: var(--r-md);
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.08);
+  caret-color: #ff5f7e; box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+  transition: border-color .2s, box-shadow .25s, background .2s;
+}
+input.answer-input::placeholder { color: rgba(232,228,240,0.40); }
+input.answer-input:focus {
+  background: rgba(255,255,255,0.09); border-color: rgba(255,95,126,0.55);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.3), 0 0 0 4px rgba(255,95,126,0.16);
+}
+.action-row { gap: 10px; margin-top: 12px; }
+.btn-primary, .empty-state .cta-btn {
+  background: var(--cta); border-radius: 999px; padding: 15px 18px;
+  font-size: 16px; font-weight: 700; letter-spacing: -0.01em;
+  text-shadow: 0 1px 1px rgba(80,0,40,0.35);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -2px 6px rgba(80,0,50,0.25), 0 10px 24px -8px rgba(222,59,101,0.75);
+  transition: transform .45s var(--spring), box-shadow .25s, filter .2s;
+}
+.btn-primary:active, .empty-state .cta-btn:active { transform: scale(0.96); filter: brightness(1.08); }
+.btn-secondary, .voice-btn {
+  min-width: 52px; border-radius: 999px; color: var(--text);
+  background: var(--glass-fill); border-color: var(--glass-line); box-shadow: var(--glass-hi);
+  transition: transform .45s var(--spring), background .2s;
+}
+.btn-secondary:active, .voice-btn:active, .speak-btn:active, .icon-btn:active { transform: scale(0.92); background: rgba(255,255,255,0.12); }
+.hint-display {
+  border-radius: var(--r-md); padding: 12px 16px; letter-spacing: 5px;
+  background: linear-gradient(135deg, rgba(255,204,0,0.14), rgba(255,149,0,0.05));
+  border-color: rgba(255,204,0,0.28); box-shadow: var(--glass-hi);
+}
+
+/* --- Sonuç: renkli cam, iOS sistem renkleri --- */
+.result-box { border-radius: var(--r-lg); padding: 16px 18px; margin-top: 14px; }
+.result-box.correct {
+  background: linear-gradient(135deg, rgba(48,209,88,0.22), rgba(48,209,88,0.05));
+  border-color: rgba(48,209,88,0.38); box-shadow: var(--glass-hi), 0 14px 32px -14px rgba(48,209,88,0.6);
+}
+.result-box.wrong {
+  background: linear-gradient(135deg, rgba(255,69,58,0.22), rgba(255,69,58,0.05));
+  border-color: rgba(255,69,58,0.38); box-shadow: var(--glass-hi), 0 14px 32px -14px rgba(255,69,58,0.6);
+}
+.result-box.learned { box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 16px 36px -12px rgba(255,140,0,0.7); }
+.result-title { font-size: 12px; letter-spacing: 0.08em; }
+.result-answer { font-size: 27px; letter-spacing: -0.02em; }
+.alt-meanings { font-family: var(--ui-font); }
+
+/* Örnek cümleler: iOS "inset grouped" liste */
+.examples-box {
+  border-radius: var(--r-lg); padding: 12px 14px 8px;
+  background: rgba(255,255,255,0.045); border-color: rgba(255,255,255,0.07); box-shadow: var(--glass-hi);
+}
+.examples-title { color: #b9a8ff; font-size: 10.5px; letter-spacing: 0.1em; }
+.example-item { padding: 8px 0; border-bottom-color: rgba(255,255,255,0.06); }
+.example-en { font-size: 14px; line-height: 1.4; align-items: center; }
+.example-en .ex-speak {
+  width: 28px; height: 28px; margin: -2px 2px -2px -4px; border-radius: 50%; opacity: 1;
+  display: inline-flex; align-items: center; justify-content: center; background: rgba(79,172,254,0.13);
+}
+.example-tr { padding-left: 29px; font-size: 12.5px; }
+
+/* Zorluk: iOS segmented control */
+.diff-row {
+  gap: 4px; padding: 4px; margin-top: 12px; border-radius: 16px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
+}
+.diff-btn {
+  border: 0; border-radius: 12px; background: transparent; padding: 10px 4px; font-size: 12.5px;
+  transition: transform .4s var(--spring), background .2s;
+}
+.diff-btn:active { transform: scale(0.94); }
+.next-btn {
+  background: var(--cta-2); border-radius: 999px; padding: 15px; font-size: 16px; margin-top: 14px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 10px 24px -8px rgba(102,126,234,0.7);
+  transition: transform .45s var(--spring);
+}
+.next-btn:active { transform: scale(0.96); }
+
+/* --- Seans özeti --- */
+.session-summary {
+  border-radius: var(--r-xl); padding: 28px 20px 20px;
+  background: radial-gradient(120% 80% at 50% 0%, rgba(118,75,162,0.38), transparent 65%), rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.08); box-shadow: var(--glass-hi), var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+}
+.session-summary h3 { font-size: 30px; letter-spacing: -0.02em; }
+.summary-grid { gap: 10px; }
+.summary-stat { background: rgba(255,255,255,0.05); border-radius: 18px; padding: 14px 6px; box-shadow: var(--glass-hi); }
+.summary-stat-num { font-size: 30px; }
+.levelup-card, .leveldown-card { border-radius: 18px; box-shadow: var(--glass-hi); }
+#next-session-btn { width: 100%; }
+
+/* --- Widget kartlar ve listeler (bulanıklıksız hafif cam — uzun listede performans) --- */
+.mini-stats { gap: 10px; }
+.mini-stat {
+  border-radius: 20px; padding: 14px 10px 12px; text-align: left;
+  background: linear-gradient(180deg, rgba(255,255,255,0.065), rgba(255,255,255,0.025));
+  border-color: rgba(255,255,255,0.07); box-shadow: var(--glass-hi);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.mini-stat-num { font-size: clamp(18px, 5.4vw, 26px); font-variant-numeric: tabular-nums; }
+.mini-stat-label { font-size: 9.5px; letter-spacing: 0.06em; }
+.stat-card, .goal-ring-wrap, .ach-card, .cat-row, .learned-word, .hardest-word, .wd-score-item, .recap-stat {
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025));
+  border-color: rgba(255,255,255,0.07); box-shadow: var(--glass-hi);
+}
+.stat-card, .goal-ring-wrap { border-radius: var(--r-lg); padding: 16px; }
+.learned-word, .hardest-word, .cat-row, .wd-score-item, .recap-stat { border-radius: var(--r-md); }
+.learned-word, .hardest-word { padding: 12px 14px; }
+.ach-card { border-radius: 18px; }
+.learned-word { transition: transform .35s var(--spring), background .2s; }
+.learned-word:active { transform: scale(0.98); }
+.stat-num { font-size: 34px; letter-spacing: -0.02em; }
+.section-title { font-size: 22px; letter-spacing: -0.02em; margin: 26px 0 12px; }
+.cat-bar { width: 60px; height: 5px; border-radius: 99px; }
+.cat-bar-fill { border-radius: 99px; }
+.week-chart { height: 80px; gap: 8px; }
+.week-bar { border-radius: 8px 8px 3px 3px; }
+.week-bar.has-data { background: linear-gradient(180deg, #ff5f7e, #bd36ca); }
+.learned-banner { border-radius: var(--r-lg); box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 14px 30px -14px rgba(255,140,0,0.7); }
+.vocab-tab {
+  padding: 9px 15px; border-radius: 999px; background: var(--glass-fill); border-color: var(--glass-line);
+  box-shadow: var(--glass-hi); transition: transform .4s var(--spring), background .2s;
+}
+.vocab-tab:active { transform: scale(0.95); }
+.search-bar { border: 1px solid transparent; background-color: rgba(118,118,128,0.24); border-radius: 12px; font-size: 16px; }
+.search-bar:focus { border-color: rgba(255,95,126,0.5); }
+.share-btn { border-radius: 999px; background: var(--glass-fill); border-color: var(--glass-line); box-shadow: var(--glass-hi); }
+
+/* --- Pencereler: alttan kayan iOS sayfası (sheet) --- */
+.modal-backdrop { background: rgba(4,2,12,0.45); -webkit-backdrop-filter: blur(6px) saturate(120%); backdrop-filter: blur(6px) saturate(120%); }
+.modal-backdrop.show { animation: fadeIn .25s ease-out; }
+.modal {
+  position: relative; border-radius: 34px 34px 0 0; border: 1px solid rgba(255,255,255,0.09); border-bottom: 0;
+  padding: 28px 20px calc(22px + var(--safe-bottom));
+  background: linear-gradient(180deg, rgba(42,34,66,0.86), rgba(20,16,32,0.94));
+  -webkit-backdrop-filter: blur(40px) saturate(180%); backdrop-filter: blur(40px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 -20px 60px rgba(0,0,0,0.5);
+}
+.modal-backdrop.show .modal { animation: sheetUp .5s var(--ease-out); }
+.modal::before {
+  content: ''; position: absolute; top: 9px; left: 50%; width: 38px; height: 5px; margin-left: -19px;
+  border-radius: 99px; background: rgba(255,255,255,0.24);
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@media (min-width: 600px) {
+  .modal { border-radius: 30px; border-bottom: 1px solid rgba(255,255,255,0.09); }
+  .modal::before { display: none; }
+  .modal-backdrop.show .modal { animation: fadePop .4s var(--ease-out); }
+}
+.modal-header { border-bottom-color: rgba(255,255,255,0.07); }
+.modal-title { font-size: 24px; letter-spacing: -0.02em; }
+.modal-close {
+  width: 32px; height: 32px; border-radius: 50%; font-size: 20px; line-height: 1; color: var(--text);
+  background: rgba(255,255,255,0.10); display: inline-flex; align-items: center; justify-content: center;
+  transition: transform .35s var(--spring);
+}
+.modal-close:active { transform: scale(0.88); }
+.modal-section h4 { letter-spacing: 0.08em; }
+.btn-row {
+  border-radius: 14px; padding: 13px 14px; background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.06);
+  transition: transform .35s var(--spring), background .2s;
+}
+.btn-row.danger { color: #ff6961; background: rgba(255,69,58,0.10); border-color: rgba(255,69,58,0.25); }
+.chip { padding: 8px 13px; background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.07); transition: transform .35s var(--spring), background .2s; }
+.chip.active { background: var(--cta); box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 6px 14px -6px rgba(222,59,101,0.7); }
+/* iOS anahtarı */
+.toggle-row { padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.toggle { width: 51px; height: 31px; flex-shrink: 0; border: 0; background: rgba(120,120,128,0.32); transition: background .25s; }
+.toggle::after {
+  top: 2px; left: 2px; width: 27px; height: 27px; background: #fff;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.3), 0 1px 1px rgba(0,0,0,0.16); transition: transform .35s var(--spring);
+}
+.toggle.on { background: #30d158; }
+.toggle.on::after { left: 2px; transform: translateX(20px); }
+.session-input, .wd-note { border-radius: 12px; background: rgba(118,118,128,0.24); border-color: transparent; font-size: 16px; }
+
+/* --- Yüzen cam sekme çubuğu (iOS 26) — seçili sekmenin altında kayan cam damla --- */
+main { padding-bottom: calc(112px + var(--safe-bottom)); }
+.bottom-nav {
+  left: 50%; right: auto; bottom: calc(10px + var(--safe-bottom)); transform: translateX(-50%);
+  width: min(400px, calc(100% - 28px)); padding: 6px; border-radius: 999px;
+  background: linear-gradient(180deg, rgba(48,40,72,0.55), rgba(22,18,36,0.64));
+  -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(255,255,255,0.04), 0 18px 40px -12px rgba(0,0,0,0.85);
+}
+.nav-btn {
+  position: relative; z-index: 1; padding: 8px 4px 7px; gap: 2px; border-radius: 999px;
+  color: rgba(235,230,245,0.62); font-size: 10.5px; letter-spacing: 0;
+}
+.nav-btn svg { width: 24px; height: 24px; transition: transform .45s var(--spring); }
+.nav-btn.active { color: #ff6b8a; }
+.nav-btn.active svg { transform: scale(1.06); filter: drop-shadow(0 0 8px rgba(255,95,126,0.55)); }
+.nav-btn.active { background: rgba(255,255,255,0.10); } /* :has desteklemeyen tarayıcılar */
+@supports selector(:has(*)) {
+  .nav-btn.active { background: transparent; }
+  .bottom-nav::before {
+    content: ''; position: absolute; top: 6px; bottom: 6px; left: 6px; width: calc((100% - 12px) / 3);
+    border-radius: 999px; background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.07));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 12px rgba(0,0,0,0.25);
+    transition: transform .55s var(--spring);
+  }
+  .bottom-nav:has(.nav-btn[data-tab="learned"].active)::before { transform: translateX(100%); }
+  .bottom-nav:has(.nav-btn[data-tab="stats"].active)::before { transform: translateX(200%); }
+}
+
+/* --- Bildirimler: Dynamic Island güncelleme kapsülü, cam afişler --- */
+.update-banner {
+  top: calc(8px + var(--safe-top)); left: 50%; right: auto; transform: translateX(-50%);
+  width: max-content; max-width: calc(100% - 24px); padding: 8px 8px 8px 16px; border-radius: 999px;
+  background: #000; box-shadow: 0 12px 30px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.08);
+}
+.update-banner.show { animation: island .6s var(--spring); }
+.update-banner button { border-radius: 999px; padding: 6px 14px; background: var(--cta); color: #fff; }
+@keyframes island {
+  from { opacity: 0; transform: translateX(-50%) scale(0.35, 0.6); }
+  to   { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+.install-banner {
+  bottom: calc(90px + var(--safe-bottom)); border-radius: var(--r-lg);
+  background: linear-gradient(135deg, rgba(91,108,240,0.88), rgba(118,75,162,0.90));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 16px 36px -10px rgba(118,75,162,0.6);
+}
+.install-banner-btn { border-radius: 999px; }
+.notif-banner { border-radius: 18px; box-shadow: var(--glass-hi); }
+.notif-banner button { border-radius: 999px; background: var(--cta-2); }
+
+@media (max-width: 380px) {
+  .word-display { font-size: 34px; }
+  .cat-emoji { width: 64px; height: 64px; font-size: 34px; }
+  .result-answer { font-size: 23px; }
+}
+/* iOS "Şeffaflığı Azalt" ayarına saygı */
+@media (prefers-reduced-transparency: reduce) {
+  .card, .session-summary, .bottom-nav, .modal, .icon-btn, header::before {
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+  .card, .session-summary, .bottom-nav, .modal { background: #1a1530; }
+  body::after { display: none; }
+}
 </style>
 </head>
 <body>
