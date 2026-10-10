@@ -242,7 +242,9 @@ month                          [🔊]
 [Sonraki Kelime →]
 ```
 
-İpucu cümlesi TR→EN yönünde hedef kelimeyi `____` ile gizler (çekimli halleri de). Cevap verilince gizlenir — aşağıdaki örnek cümleler kutusunda birebir tekrar ediyor.
+İpucu cümlesi TR→EN yönünde hedef kelimeyi `____` ile gizler (çekimli halleri de).
+
+**Cevap sonrası ekran kaydırmadan sığar** — `finalizeAnswer()` karta `.answered` ekler (`showWord()` kaldırır); CSS input'u, ipucu cümlesini, geçmiş noktalarını ve İpucu/Pas satırını gizler (~120 px). Örnek cümle: ekran ≥ 840 px ise 3, değilse 2 (kelime detayında hep 3). ≤ 700 px'te (iPhone SE) seviye yolu da gizlenir. Kaydırma yalnızca "Sonraki" görünmüyorsa ve görünecek kadar yapılır (`scrollIntoView({block:'nearest'})` + `scroll-margin-bottom`). Ölçüldü: 440×956, 393×852, 375×812'de kaydırma yok; 375×667'de 15 kelimede 1.
 
 ### Etkileşim
 - **Enter** → kontrol et; cevap verilmişse sonraki kelime
@@ -287,7 +289,7 @@ Animasyonların tamamı CSS `@keyframes` — JS animasyon yok.
 
 > ### 🚨 Her deploy'da cache versiyonunu artır
 > ```js
-> const CACHE = 'kelimeedin-v23';   // → v24
+> const CACHE = 'kelimeedin-v24';   // → v25
 > ```
 > Artırmazsan kullanıcılar eski sürümü görmeye devam eder.
 

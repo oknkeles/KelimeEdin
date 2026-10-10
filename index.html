@@ -1242,6 +1242,22 @@ main { padding-bottom: calc(112px + var(--safe-bottom)); }
 .action-row { display: flex; gap: 10px; }
 .action-row .btn-secondary { flex: 1; padding: 12px 14px; font-size: 14px; font-weight: 600; }
 
+/* --- Cevap sonrası ekran: kaydırmadan tek ekrana sığsın --- */
+.card.answered .answer-wrap,
+.card.answered .action-row,
+.card.answered .hint-sentence,
+.card.answered .word-history { display: none; }
+.card.answered .word-row { margin-bottom: 0; }
+.card.answered .result-box { margin-top: 10px; padding: 13px 16px; }
+.card.answered .examples-box { margin-top: 10px; padding-top: 10px; }
+.card.answered .example-item { padding: 6px 0; }
+.card.answered .diff-row, .card.answered .next-btn { margin-top: 10px; }
+/* Kısa ekranlarda 2 örnek cümle (3'ü kelime detayında hep var) */
+@media (max-height: 840px) { .card.answered .example-item:nth-child(3) { display: none; } }
+/* iPhone SE gibi çok kısa ekranlarda cevap sonrası seviye yolunu da gizle (üstte seans çubuğu kalır) */
+@media (max-height: 700px) { #page-play:has(.card.answered) .cefr-roadmap { display: none; } }
+.next-btn { scroll-margin-bottom: calc(96px + var(--safe-bottom)); }
+
 /* iOS "Şeffaflığı Azalt" ayarına saygı */
 @media (prefers-reduced-transparency: reduce) {
   .card, .session-summary, .bottom-nav, .modal, .icon-btn, header::before {
@@ -2069,7 +2085,7 @@ function showWord() {
   diffRow.querySelectorAll('.diff-btn').forEach(b => {
     b.disabled = false; b.style.opacity = ''; b.style.fontWeight = '';
   });
-  document.getElementById('word-card').classList.remove('shake');
+  document.getElementById('word-card').classList.remove('shake', 'answered');
   updateSessionBar();
   input.focus();
 }
@@ -2190,6 +2206,9 @@ function skipAnswer() {
 
 function finalizeAnswer(isCorrect, isSkip) {
   answered = true;
+  // Cevap sonrası artık işe yaramayan satırlar (input, ipucu cümlesi, geçmiş noktaları,
+  // İpucu/Pas) gizlenir ki sonuç + örnekler + Sonraki tek ekrana sığsın (CSS: .card.answered).
+  document.getElementById('word-card').classList.add('answered');
   const input = document.getElementById('answer-input');
   input.disabled = true;
   input.blur(); // klavyeyi kapat, viewport stabilize olsun
@@ -2350,9 +2369,10 @@ function finalizeAnswer(isCorrect, isSkip) {
   checkAchievements();
 
   // Scroll result into view — wait for keyboard to fully close on mobile
+  // Her cevapta sonuç kutusunu en üste çekiyordu (yapışkan başlığın altına). Şimdi yalnızca
+  // "Sonraki" butonu görünmüyorsa, görünecek kadar kaydırır; ekran sığıyorsa hiç kıpırdamaz.
   function doScroll() {
-    const rb = document.getElementById('result-box');
-    if (rb) rb.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    nextBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
   if (window.visualViewport) {
     let scrolled = false;
